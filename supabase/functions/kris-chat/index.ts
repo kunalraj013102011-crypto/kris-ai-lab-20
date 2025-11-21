@@ -845,9 +845,9 @@ Remember: I'm your friend and collaborator, here to help you explore ideas, lear
 
     const model = wantsImage ? 'gemini-2.5-flash' : 'gemini-2.5-flash';
     
-    // Try v1 API first, fallback to v1beta if needed
-    let apiVersion = 'v1';
-    let geminiUrl = `https://generativelanguage.googleapis.com/${apiVersion}/models/${model}:streamGenerateContent?key=${GEMINI_API_KEY}`;
+    // Use non-streaming Gemini API and stream to client as SSE
+    const apiVersion = 'v1';
+    const geminiUrl = `https://generativelanguage.googleapis.com/${apiVersion}/models/${model}:generateContent?key=${GEMINI_API_KEY}`;
     
     const geminiBody = {
       contents: alternatingContents,
@@ -855,7 +855,7 @@ Remember: I'm your friend and collaborator, here to help you explore ideas, lear
         temperature: 0.9,
         topK: 40,
         topP: 0.95,
-        maxOutputTokens: 32768, // Increased to allow longer, complete responses
+        maxOutputTokens: 32768,
       },
       safetySettings: [
         { category: "HARM_CATEGORY_HARASSMENT", threshold: "BLOCK_NONE" },
@@ -865,28 +865,13 @@ Remember: I'm your friend and collaborator, here to help you explore ideas, lear
       ]
     };
 
-    let response = await fetch(geminiUrl, {
+    const response = await fetch(geminiUrl, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
       },
       body: JSON.stringify(geminiBody),
     });
-
-    // Fallback to v1beta if v1 fails
-    if (!response.ok && response.status === 404) {
-      console.log('v1 failed, trying v1beta');
-      apiVersion = 'v1beta';
-      geminiUrl = `https://generativelanguage.googleapis.com/${apiVersion}/models/${model}:streamGenerateContent?key=${GEMINI_API_KEY}`;
-      
-      response = await fetch(geminiUrl, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(geminiBody),
-      });
-    }
 
     if (!response.ok) {
       const errorText = await response.text();
@@ -900,94 +885,44 @@ Remember: I'm your friend and collaborator, here to help you explore ideas, lear
       });
     }
 
-    // Stream the response directly without buffering
     const encoder = new TextEncoder();
-    
+    const geminiData = await response.json();
+
+    // Extract full text response
+    let fullResponse = '';
+    try {
+      const candidates = geminiData.candidates || [];
+      for (const candidate of candidates) {
+        const parts = candidate.content?.parts || [];
+        for (const part of parts) {
+          if (part.text) fullResponse += part.text;
+        }
+      }
+    } catch (e) {
+      console.error('Error parsing Gemini response:', e);
+    }
+
+    if (!fullResponse) {
+      console.log('Gemini returned empty response');
+    }
+
     const stream = new ReadableStream({
-      async start(controller) {
+      start(controller) {
         try {
-          const reader = response.body?.getReader();
-          const decoder = new TextDecoder();
-          
-          if (!reader) {
-            throw new Error('No response body');
+          // 1) Stream the main text as a single SSE chunk
+          if (fullResponse) {
+            const sseData = {
+              choices: [{
+                delta: { content: fullResponse },
+                index: 0,
+                finish_reason: null,
+              }],
+            };
+            controller.enqueue(encoder.encode(`data: ${JSON.stringify(sseData)}\n\n`));
           }
 
-          let buffer = '';
-          let chunks: any[] = [];
-          
-          while (true) {
-            const { done, value } = await reader.read();
-            if (done) break;
-            
-            buffer += decoder.decode(value, { stream: true });
-            
-            // Try to parse complete JSON objects from buffer
-            const lines = buffer.split('\n');
-            buffer = lines.pop() || ''; // Keep incomplete line in buffer
-            
-            for (const line of lines) {
-              if (!line.trim()) continue;
-              
-              try {
-                // Remove array syntax and commas
-                const cleaned = line.trim().replace(/^\[|,$/g, '');
-                if (cleaned && cleaned !== ']') {
-                  const chunk = JSON.parse(cleaned);
-                  chunks.push(chunk);
-                  
-                  // Immediately stream the text content
-                  const text = chunk.candidates?.[0]?.content?.parts?.[0]?.text;
-                  if (text) {
-                    console.log('Streaming chunk:', text.substring(0, 50));
-                    const sseData = {
-                      choices: [{
-                        delta: { content: text },
-                        index: 0,
-                        finish_reason: null
-                      }]
-                    };
-                    controller.enqueue(encoder.encode(`data: ${JSON.stringify(sseData)}\n\n`));
-                  }
-                }
-              } catch (e) {
-                // Skip invalid JSON
-              }
-            }
-          }
-          
-          // Process any remaining buffer
-          if (buffer.trim()) {
-            try {
-              const cleaned = buffer.trim().replace(/^\[|\]$|,$/g, '');
-              if (cleaned) {
-                const chunk = JSON.parse(cleaned);
-                const text = chunk.candidates?.[0]?.content?.parts?.[0]?.text;
-                if (text) {
-                  const sseData = {
-                    choices: [{
-                      delta: { content: text },
-                      index: 0,
-                      finish_reason: null
-                    }]
-                  };
-                  controller.enqueue(encoder.encode(`data: ${JSON.stringify(sseData)}\n\n`));
-                }
-              }
-            } catch (e) {}
-          }
-
-          console.log('Total chunks streamed:', chunks.length);
-
-          // Analyze full response for workflow detection
-          let fullResponse = '';
-          for (const chunk of chunks) {
-            const text = chunk.candidates?.[0]?.content?.parts?.[0]?.text;
-            if (text) fullResponse += text;
-          }
-
-          // Check for redirect suggestions
-          let suggestedRedirect = null;
+          // 2) Try to detect redirect suggestion inside fullResponse
+          let suggestedRedirect: any = null;
           try {
             const jsonMatch = fullResponse.match(/\{[\s\S]*?"route"[\s\S]*?\}/);
             if (jsonMatch) {
@@ -996,37 +931,43 @@ Remember: I'm your friend and collaborator, here to help you explore ideas, lear
                 const moduleMap: Record<string, string> = {
                   '/scientist': 'scientist',
                   '/circuit': 'circuit',
-                  '/3d-lab': '3d',
+                  '/3d-lab': '3d-lab',
                   '/simulation': 'simulation',
                   '/learning': 'learning',
-                  '/projects': 'projects'
+                  '/projects': 'projects',
                 };
                 suggestedRedirect = {
                   module: moduleMap[redirectData.route] || redirectData.route.replace('/', ''),
                   label: redirectData.reason,
-                  prompt: redirectData.prompt
+                  prompt: redirectData.prompt,
                 };
               }
             }
-          } catch (e) {}
+          } catch (e) {
+            console.error('Redirect detection error:', e);
+          }
 
-          // Send redirect if detected
           if (suggestedRedirect) {
             const redirectData = {
               choices: [{
                 delta: { redirect: suggestedRedirect },
                 index: 0,
-                finish_reason: null
-              }]
+                finish_reason: null,
+              }],
             };
             controller.enqueue(encoder.encode(`data: ${JSON.stringify(redirectData)}\n\n`));
           }
-          
-          // Generate conversation title after 2nd exchange (3+ messages: 1 initial + 1 user + 1 assistant)
+
+          // 3) Generate conversation title after 2nd exchange
           if (messages.length >= 3) {
-            try {
-              const conversationContext = messages.slice(0, 4).map((m: any) => `${m.role}: ${m.content}`).join('\n');
-              const titlePrompt = `You are a Chat Naming AI.
+            (async () => {
+              try {
+                const conversationContext = messages
+                  .slice(0, 4)
+                  .map((m: any) => `${m.role}: ${m.content}`)
+                  .join('\n');
+
+                const titlePrompt = `You are a Chat Naming AI.
 
 YOUR JOB:
 – Read the entire conversation below.
@@ -1044,48 +985,56 @@ Conversation about robotics circuits → "Robotics Circuit Basics"
 Now, generate the best title for this conversation:
 
 ${conversationContext}`;
-              
-              const titleResponse = await fetch(`https://generativelanguage.googleapis.com/v1/models/gemini-2.5-flash:generateContent?key=${GEMINI_API_KEY}`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                  contents: [{ parts: [{ text: titlePrompt }] }],
-                  generationConfig: { temperature: 0.7, maxOutputTokens: 30 }
-                })
-              });
-              
-              if (titleResponse.ok) {
-                const titleData = await titleResponse.json();
-                let generatedTitle = titleData.candidates?.[0]?.content?.parts?.[0]?.text?.trim();
-                
-                // Clean up any quotes or extra formatting
-                if (generatedTitle) {
-                  generatedTitle = generatedTitle.replace(/^["']|["']$/g, '').trim();
-                  
-                  const titleSSE = {
-                    choices: [{
-                      delta: { conversationTitle: generatedTitle },
-                      index: 0,
-                      finish_reason: null
-                    }]
-                  };
-                  controller.enqueue(encoder.encode(`data: ${JSON.stringify(titleSSE)}\n\n`));
-                  console.log('Generated conversation title:', generatedTitle);
-                }
-              }
-            } catch (e) {
-              console.error('Title generation error:', e);
-            }
-          }
 
-          // Send done signal
-          controller.enqueue(encoder.encode('data: [DONE]\n\n'));
-          controller.close();
+                const titleResponse = await fetch(
+                  `https://generativelanguage.googleapis.com/v1/models/gemini-2.5-flash:generateContent?key=${GEMINI_API_KEY}`,
+                  {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                      contents: [{ parts: [{ text: titlePrompt }] }],
+                      generationConfig: { temperature: 0.7, maxOutputTokens: 30 },
+                    }),
+                  }
+                );
+
+                if (titleResponse.ok) {
+                  const titleData = await titleResponse.json();
+                  let generatedTitle =
+                    titleData.candidates?.[0]?.content?.parts?.[0]?.text?.trim();
+
+                  if (generatedTitle) {
+                    generatedTitle = generatedTitle.replace(/^['"]|['"]$/g, '').trim();
+
+                    const titleSSE = {
+                      choices: [{
+                        delta: { conversationTitle: generatedTitle },
+                        index: 0,
+                        finish_reason: null,
+                      }],
+                    };
+                    controller.enqueue(
+                      encoder.encode(`data: ${JSON.stringify(titleSSE)}\n\n`)
+                    );
+                    console.log('Generated conversation title:', generatedTitle);
+                  }
+                }
+              } catch (e) {
+                console.error('Title generation error:', e);
+              } finally {
+                controller.enqueue(encoder.encode('data: [DONE]\n\n'));
+                controller.close();
+              }
+            })();
+          } else {
+            controller.enqueue(encoder.encode('data: [DONE]\n\n'));
+            controller.close();
+          }
         } catch (error) {
           console.error('Stream processing error:', error);
           controller.error(error);
         }
-      }
+      },
     });
 
     return new Response(stream, {
