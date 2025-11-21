@@ -767,6 +767,7 @@ Remember: I'm your friend and collaborator, here to help you explore ideas, lear
     // Build Gemini compatible request
     console.log(`Sending ${messages.length} messages`);
     
+    // Convert messages to Gemini format, filtering out system messages
     const geminiContents = messages
       .filter((msg: any) => msg.role !== 'system')
       .map((msg: any) => ({
@@ -774,12 +775,26 @@ Remember: I'm your friend and collaborator, here to help you explore ideas, lear
         parts: [{ text: msg.content }]
       }));
 
-    // Add system prompt as first user message
-    geminiContents.unshift({
+    // Ensure messages alternate between user and model
+    const alternatingContents = [];
+    for (let i = 0; i < geminiContents.length; i++) {
+      const current = geminiContents[i];
+      const previous = alternatingContents[alternatingContents.length - 1];
+      
+      // If same role as previous, combine them
+      if (previous && previous.role === current.role) {
+        previous.parts.push(...current.parts);
+      } else {
+        alternatingContents.push(current);
+      }
+    }
+
+    // Add system prompt at the beginning
+    alternatingContents.unshift({
       role: 'user',
       parts: [{ text: systemPrompt }]
     });
-    geminiContents.push({
+    alternatingContents.splice(1, 0, {
       role: 'model',
       parts: [{ text: 'I understand. I am KRIS Control Hub, ready to intelligently route you and assist with your project!' }]
     });
@@ -787,7 +802,7 @@ Remember: I'm your friend and collaborator, here to help you explore ideas, lear
     // Handle file attachments (images and other files from uploaded files array)
     if (files && files.length > 0) {
       console.log('Processing uploaded files...');
-      const lastContent = geminiContents[geminiContents.length - 1];
+      const lastContent = alternatingContents[alternatingContents.length - 1];
       
       for (const file of files) {
         console.log('Processing file:', file.name, file.type);
@@ -835,7 +850,7 @@ Remember: I'm your friend and collaborator, here to help you explore ideas, lear
     let geminiUrl = `https://generativelanguage.googleapis.com/${apiVersion}/models/${model}:streamGenerateContent?key=${GEMINI_API_KEY}`;
     
     const geminiBody = {
-      contents: geminiContents,
+      contents: alternatingContents,
       generationConfig: {
         temperature: 0.9,
         topK: 40,
