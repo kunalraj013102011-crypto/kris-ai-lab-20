@@ -214,7 +214,7 @@ export const KrisAIChat = ({ open, onOpenChange, contextData }: KrisAIChatProps)
         .from('conversations')
         .insert({
           user_id: userId,
-          name: `New Conversation ${new Date().toLocaleDateString()}`
+          name: `New Chat ${new Date().toLocaleDateString()}`
         })
         .select()
         .single();
@@ -242,6 +242,27 @@ export const KrisAIChat = ({ open, onOpenChange, contextData }: KrisAIChatProps)
         description: "Failed to create new conversation",
         variant: "destructive"
       });
+    }
+  };
+
+  const generateChatTitle = async (conversationId: string, messageHistory: Message[]) => {
+    try {
+      // Only generate title after 3+ messages
+      if (messageHistory.length < 3) return;
+
+      const { data, error } = await supabase.functions.invoke('generate-chat-title', {
+        body: {
+          messages: messageHistory.slice(0, 6).map(m => ({ role: m.role, content: m.content }))
+        }
+      });
+
+      if (error) throw error;
+
+      if (data?.title) {
+        await updateConversationName(conversationId, data.title);
+      }
+    } catch (error) {
+      console.error('Error generating chat title:', error);
     }
   };
 
@@ -811,6 +832,11 @@ export const KrisAIChat = ({ open, onOpenChange, contextData }: KrisAIChatProps)
       // Only save if still in the same conversation
       if (streamConversationId === activeConversationId) {
         await saveChatMessage("assistant", assistantMessage, assistantImageUrl);
+        
+        // Generate chat title after a few messages
+        if (currentConversation && messages.length >= 2) {
+          generateChatTitle(currentConversation.id, [...messages, { role: "assistant", content: assistantMessage }]);
+        }
       }
 
       // Fallback: if user asked for an image but none arrived via stream, call dedicated generator

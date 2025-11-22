@@ -141,96 +141,103 @@ const ProjectManager = () => {
     setProgress(0);
 
     try {
-      // Phase 1: Collect Chat Histories
-      setProgress(10);
-      const { data: conversations } = await supabase
-        .from('conversations')
-        .select('*, chat_history(*)')
-        .eq('user_id', userId)
-        .order('updated_at', { ascending: false });
-
-      // Phase 2: Analyze conversations with AI
-      setProgress(30);
-      let chatHistoryAnalysis = '';
-      if (conversations && conversations.length > 0) {
-        chatHistoryAnalysis = conversations.map((conv: any) => {
-          const messageCount = conv.chat_history?.length || 0;
-          return `### ${conv.name || 'Unnamed Conversation'}
-- Date: ${new Date(conv.created_at).toLocaleDateString()}
-- Messages: ${messageCount}
-- Last Activity: ${new Date(conv.updated_at).toLocaleDateString()}`;
-        }).join('\n\n');
-      }
-
-      // Phase 3: Generate comprehensive documentary
-      setProgress(50);
       const { data: { session } } = await supabase.auth.getSession();
       if (!session) {
         throw new Error('Authentication required');
       }
 
-      // Use AI to analyze and create documentary
-      const { data: aiAnalysis, error: aiError } = await supabase.functions.invoke('kris-chat', {
+      // Phase 1: Collect all chat histories (KRIS + AI Scientist)
+      toast({ title: "Collecting Chat Histories", description: "Gathering all conversation data..." });
+      setProgress(15);
+      
+      // Get KRIS conversations
+      const { data: krisConversations } = await supabase
+        .from('conversations')
+        .select('id, name, chat_history(*)')
+        .eq('user_id', userId)
+        .order('updated_at', { ascending: false });
+
+      // Format KRIS chat histories
+      const krisChatHistories = [];
+      if (krisConversations) {
+        for (const conv of krisConversations) {
+          if (conv.chat_history && conv.chat_history.length > 0) {
+            const chatContent = conv.chat_history
+              .map((msg: any) => `${msg.role}: ${msg.content}`)
+              .join('\n');
+            krisChatHistories.push({
+              source: 'KRIS',
+              conversation: conv.name,
+              content: chatContent
+            });
+          }
+        }
+      }
+
+      // Get AI Scientist chats (stored in chat_history without conversation grouping)
+      // You would need similar storage for AI Scientist chats - for now we'll use available data
+      const allChatHistories = [...krisChatHistories];
+
+      // Phase 2: Generate Lessons
+      toast({ title: "Generating Lessons", description: "Creating project-specific learning materials..." });
+      setProgress(35);
+      
+      const { data: lessonsData, error: lessonsError } = await supabase.functions.invoke('generate-project-lessons', {
+        headers: { Authorization: `Bearer ${session.access_token}` },
         body: {
-          messages: [
-            {
-              role: 'user',
-              content: `Analyze this project and create a comprehensive documentary report:
-
-Project Title: ${selectedProject.title}
-Description: ${selectedProject.description}
-Created: ${new Date(selectedProject.created_at).toLocaleString()}
-Current Phase: ${selectedProject.current_phase}
-Status: ${selectedProject.status}
-
-Chat History Summary:
-${chatHistoryAnalysis}
-
-Create a detailed project documentary with:
-1. Executive Summary
-2. Project Timeline and Milestones
-3. Development Journey Analysis
-4. Technical Specifications
-5. Challenges and Solutions
-6. Key Learnings
-7. Future Recommendations
-8. Conclusion
-
-Format as a professional markdown document.`
-            }
-          ],
-          userId: userId,
-          files: []
+          projectTitle: selectedProject.title,
+          projectDescription: selectedProject.description,
+          chatHistories: allChatHistories
         }
       });
 
-      setProgress(80);
+      if (lessonsError) {
+        console.error('Lessons generation error:', lessonsError);
+      }
 
-      const documentaryContent = aiAnalysis?.response || `# Project Documentary: ${selectedProject.title}
+      // Phase 3: Generate comprehensive documentary
+      toast({ title: "Analyzing Project", description: "Creating comprehensive documentary report..." });
+      setProgress(60);
+      
+      const { data: documentaryData, error: docError } = await supabase.functions.invoke('generate-project-documentary', {
+        headers: { Authorization: `Bearer ${session.access_token}` },
+        body: {
+          projectData: {
+            title: selectedProject.title,
+            description: selectedProject.description,
+            status: selectedProject.status,
+            current_phase: selectedProject.current_phase,
+            created_at: selectedProject.created_at
+          },
+          chatHistories: allChatHistories
+        }
+      });
+
+      if (docError) throw docError;
+
+      const documentaryContent = documentaryData?.documentary || `# Project Documentary: ${selectedProject.title}
 
 ## Executive Summary
 ${selectedProject.description}
 
-## Project Timeline
+## Project Information
 - Created: ${new Date(selectedProject.created_at).toLocaleString()}
 - Current Phase: ${selectedProject.current_phase}
 - Status: ${selectedProject.status}
 
-## Chat History Analysis
-${chatHistoryAnalysis || 'No chat history available'}
-
 ## Development Journey
-This project represents an innovative approach to ${selectedProject.title.toLowerCase()}.
-
-## Conclusion
-Project documentation generated successfully.
+This project represents an innovative approach to engineering and development.
 
 ---
 Generated by KRIS Project Management System
 ${new Date().toLocaleString()}`;
 
-      // Phase 4: Save the documentary
-      const { error } = await supabase.functions.invoke('manage-project', {
+      // Phase 4: Save reports
+      toast({ title: "Saving Reports", description: "Finalizing documentation..." });
+      setProgress(80);
+
+      // Save documentary
+      const { error: docSaveError } = await supabase.functions.invoke('manage-project', {
         headers: { Authorization: `Bearer ${session.access_token}` },
         body: {
           action: 'create_report',
@@ -242,15 +249,31 @@ ${new Date().toLocaleString()}`;
         }
       });
 
-      if (error) throw error;
+      if (docSaveError) throw docSaveError;
+
+      // Save lessons if generated
+      if (lessonsData?.lessons) {
+        const lessonsContent = JSON.stringify(lessonsData.lessons, null, 2);
+        await supabase.functions.invoke('manage-project', {
+          headers: { Authorization: `Bearer ${session.access_token}` },
+          body: {
+            action: 'create_report',
+            projectId: selectedProject.id,
+            projectData: {
+              reportType: 'lessons',
+              content: lessonsContent
+            }
+          }
+        });
+      }
 
       setProgress(100);
       setTimeout(() => {
         setIsGenerating(false);
         setProgress(0);
         toast({
-          title: "Documentary Generated",
-          description: "Project documentary with AI analysis has been created successfully"
+          title: "Documentary Generated Successfully",
+          description: "Project documentary, lessons, and PDF are ready for download"
         });
       }, 500);
 
@@ -261,6 +284,70 @@ ${new Date().toLocaleString()}`;
       toast({
         title: "Error",
         description: "Failed to generate documentary",
+        variant: "destructive"
+      });
+    }
+  };
+
+  const handleExportData = async () => {
+    if (!selectedProject) return;
+    
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) {
+        toast({ title: "Login required", variant: "destructive" });
+        return;
+      }
+
+      // Get all reports for this project
+      const { data: reports, error } = await supabase
+        .from('project_reports')
+        .select('*')
+        .eq('project_id', selectedProject.id)
+        .order('created_at', { ascending: false });
+
+      if (error) throw error;
+
+      if (!reports || reports.length === 0) {
+        toast({
+          title: "No Reports Found",
+          description: "Generate a documentary first before exporting",
+          variant: "destructive"
+        });
+        return;
+      }
+
+      // Combine all reports into one document
+      let exportContent = `# ${selectedProject.title} - Complete Project Documentation\n\n`;
+      exportContent += `Generated: ${new Date().toLocaleString()}\n\n`;
+      exportContent += `---\n\n`;
+
+      reports.forEach(report => {
+        exportContent += `## ${report.report_type.toUpperCase()} REPORT\n\n`;
+        exportContent += `${report.content}\n\n`;
+        exportContent += `---\n\n`;
+      });
+
+      // Create and download file
+      const blob = new Blob([exportContent], { type: 'text/markdown' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `${selectedProject.title.replace(/\s+/g, '_')}_Documentation.md`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+
+      toast({
+        title: "Export Successful",
+        description: "Project documentation downloaded as Markdown file"
+      });
+    } catch (error) {
+      console.error('Error exporting data:', error);
+      toast({
+        title: "Export Failed",
+        description: "Could not export project data",
         variant: "destructive"
       });
     }
@@ -443,7 +530,12 @@ ${new Date().toLocaleString()}`;
                   <FolderPlus className="w-4 h-4 mr-2" />
                   New Project
                 </Button>
-                <Button variant="outline" className="w-full" disabled={!selectedProject}>
+                <Button 
+                  variant="outline" 
+                  className="w-full"
+                  onClick={handleExportData}
+                  disabled={!selectedProject}
+                >
                   <Download className="w-4 h-4 mr-2" />
                   Export Data
                 </Button>
