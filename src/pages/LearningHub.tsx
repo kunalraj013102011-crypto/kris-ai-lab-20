@@ -14,11 +14,10 @@ import { toast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 
 interface Lesson {
-  id: number;
   title: string;
-  topic: string;
-  duration: string;
-  completed: boolean;
+  description: string;
+  concepts: string[];
+  tips: string[];
 }
 
 interface ChatHistoryItem {
@@ -34,13 +33,8 @@ const LearningHub = () => {
   const projectId = searchParams.get('projectId');
   const projectName = searchParams.get('projectName');
   
-  const [lessons, setLessons] = useState<Lesson[]>([
-    { id: 1, title: "Introduction to Circuit Design", topic: "Electronics Basics", duration: "45 min", completed: true },
-    { id: 2, title: "Understanding Resistors & Capacitors", topic: "Components", duration: "60 min", completed: true },
-    { id: 3, title: "Voltage and Current Analysis", topic: "Theory", duration: "50 min", completed: false },
-    { id: 4, title: "PCB Design Fundamentals", topic: "Design", duration: "75 min", completed: false },
-    { id: 5, title: "Microcontroller Programming", topic: "Software", duration: "90 min", completed: false },
-  ]);
+  const [lessons, setLessons] = useState<Lesson[]>([]);
+  const [loadingLessons, setLoadingLessons] = useState(false);
 
   const [chatHistory] = useState<ChatHistoryItem[]>([
     { id: "1", date: "2025-10-17", expert: "Dr. Tesla", summary: "Discussed circuit optimization techniques" },
@@ -48,90 +42,73 @@ const LearningHub = () => {
     { id: "3", date: "2025-10-15", expert: "Dr. Curie", summary: "Battery selection for portable devices" },
   ]);
 
-  const [showLessonDialog, setShowLessonDialog] = useState(false);
-  const [lessonTopic, setLessonTopic] = useState("");
-  const [lessonContent, setLessonContent] = useState("");
-  const [isGenerating, setIsGenerating] = useState(false);
-  
   const [showAnalysisDialog, setShowAnalysisDialog] = useState(false);
   const [analysisProject, setAnalysisProject] = useState("");
   const [analysisContent, setAnalysisContent] = useState("");
 
-  const completedCount = lessons.filter(l => l.completed).length;
-  const progress = (completedCount / lessons.length) * 100;
-
   useEffect(() => {
     if (projectId && projectName) {
-      toast({
-        title: "Project Context",
-        description: `Working on: ${projectName}`,
-      });
+      loadProjectLessons();
     }
   }, [projectId, projectName]);
 
-  const handleLessonComplete = (lessonId: number) => {
-    setLessons(prev => {
-      const updated = prev.map(lesson =>
-        lesson.id === lessonId ? { ...lesson, completed: true } : lesson
-      );
-      
-      // Auto-advance to next lesson
-      const currentIndex = updated.findIndex(l => l.id === lessonId);
-      if (currentIndex < updated.length - 1) {
-        console.log(`Advancing to lesson: ${updated[currentIndex + 1].title}`);
-      }
-      
-      return updated;
-    });
-  };
-
-  const generateLesson = async () => {
-    if (!lessonTopic.trim()) {
-      toast({
-        title: "Topic Required",
-        description: "Please enter a topic for your lesson",
-        variant: "destructive",
-      });
-      return;
-    }
-
-    setIsGenerating(true);
+  const loadProjectLessons = async () => {
+    if (!projectId || !projectName) return;
+    
+    setLoadingLessons(true);
     try {
       const { data: { session } } = await supabase.auth.getSession();
       if (!session) {
-        toast({ title: "Login required", description: "Please log in to generate lessons.", variant: "destructive" });
-        setIsGenerating(false);
+        toast({ 
+          title: "Login required", 
+          description: "Please log in to load lessons.", 
+          variant: "destructive" 
+        });
         return;
       }
-      
-      const { data, error } = await supabase.functions.invoke('generate-lesson', {
-        headers: { Authorization: `Bearer ${session.access_token}` },
+
+      // Collect KRIS chat histories
+      const { data: chatHistories, error: chatError } = await supabase
+        .from('chat_history')
+        .select('content, role')
+        .eq('user_id', session.user.id)
+        .order('created_at', { ascending: true });
+
+      if (chatError) throw chatError;
+
+      const formattedChatHistories = chatHistories?.map(msg => ({
+        source: msg.role === 'user' ? 'User' : 'KRIS AI',
+        content: msg.content
+      })) || [];
+
+      // Generate lessons
+      const { data, error } = await supabase.functions.invoke('generate-project-lessons', {
         body: { 
-          topic: lessonTopic, 
-          type: 'lesson',
-          projectId,
-          projectContext: projectName ? `Project: ${projectName}` : undefined
+          projectTitle: projectName,
+          projectDescription: `Project ID: ${projectId}`,
+          chatHistories: formattedChatHistories
         }
       });
 
       if (error) throw error;
 
-      setLessonContent(data.content);
+      setLessons(data.lessons || []);
       toast({
-        title: "Lesson Generated",
-        description: "Your AI-powered lesson is ready!",
+        title: "Lessons Generated",
+        description: `Generated ${data.lessons?.length || 0} lessons based on your project`,
       });
     } catch (error: any) {
-      console.error('Lesson generation error:', error);
+      console.error('Error loading lessons:', error);
       toast({
-        title: "Generation Failed",
-        description: error.message || "Failed to generate lesson",
+        title: "Failed to Load Lessons",
+        description: error.message || "Could not generate lessons",
         variant: "destructive",
       });
     } finally {
-      setIsGenerating(false);
+      setLoadingLessons(false);
     }
   };
+
 
   const analyzeProject = async () => {
     if (!analysisProject.trim()) {
@@ -143,12 +120,12 @@ const LearningHub = () => {
       return;
     }
 
-    setIsGenerating(true);
+    setLoadingLessons(true);
     try {
       const { data: { session } } = await supabase.auth.getSession();
       if (!session) {
         toast({ title: "Login required", description: "Please log in to run analysis.", variant: "destructive" });
-        setIsGenerating(false);
+        setLoadingLessons(false);
         return;
       }
       
@@ -172,7 +149,7 @@ const LearningHub = () => {
         variant: "destructive",
       });
     } finally {
-      setIsGenerating(false);
+      setLoadingLessons(false);
     }
   };
 
@@ -197,7 +174,7 @@ const LearningHub = () => {
             )}
           </div>
           <Badge variant="outline" className="border-primary/50">
-            {completedCount}/{lessons.length} Lessons Completed
+            {lessons.length} Lessons Available
           </Badge>
         </div>
       </header>
@@ -221,83 +198,72 @@ const LearningHub = () => {
 
           {/* Daily Lessons Tab */}
           <TabsContent value="lessons">
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-              <div className="lg:col-span-1">
-                <Card className="bg-card/80 backdrop-blur-sm border-primary/30 p-6">
-                  <h3 className="text-lg font-semibold text-primary mb-4">Learning Progress</h3>
-                  <div className="space-y-4">
-                    <div>
-                      <div className="flex justify-between text-sm mb-2">
-                        <span>Overall Progress</span>
-                        <span className="font-semibold">{Math.round(progress)}%</span>
-                      </div>
-                      <Progress value={progress} className="h-2" />
-                    </div>
-                    <div className="pt-4 border-t border-primary/20">
-                      <div className="text-sm text-muted-foreground space-y-2">
-                        <div className="flex justify-between">
-                          <span>Completed:</span>
-                          <span className="text-primary font-semibold">{completedCount}</span>
-                        </div>
-                        <div className="flex justify-between">
-                          <span>In Progress:</span>
-                          <span className="text-secondary font-semibold">{lessons.length - completedCount}</span>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                </Card>
+            <Card className="bg-card/80 backdrop-blur-sm border-primary/30 p-6">
+              <div className="flex items-center justify-between mb-4">
+                <h3 className="text-lg font-semibold text-primary">AI-Generated Lessons</h3>
+                {projectId && (
+                  <Button onClick={loadProjectLessons} size="sm" disabled={loadingLessons}>
+                    <Sparkles className="w-4 h-4 mr-2" />
+                    {loadingLessons ? "Generating..." : "Refresh Lessons"}
+                  </Button>
+                )}
               </div>
-
-              <div className="lg:col-span-2">
-                <Card className="bg-card/80 backdrop-blur-sm border-primary/30 p-6">
-                  <div className="flex items-center justify-between mb-4">
-                    <h3 className="text-lg font-semibold text-primary">Lesson List</h3>
-                    <Button onClick={() => setShowLessonDialog(true)} size="sm">
-                      <Sparkles className="w-4 h-4 mr-2" />
-                      Generate AI Lesson
-                    </Button>
-                  </div>
-                  <ScrollArea className="h-[500px]">
-                    <div className="space-y-3">
-                      {lessons.map(lesson => (
-                        <div
-                          key={lesson.id}
-                          className="p-4 bg-muted/30 rounded-lg border border-primary/20 hover:border-primary/50 transition-colors"
-                        >
-                          <div className="flex items-start justify-between">
-                            <div className="flex-1">
-                              <div className="flex items-center gap-2 mb-2">
-                                <Badge variant={lesson.completed ? "default" : "outline"} className="text-xs">
-                                  {lesson.topic}
-                                </Badge>
-                                {lesson.completed && (
-                                  <CheckCircle className="w-4 h-4 text-primary" />
-                                )}
-                              </div>
-                              <h4 className="font-semibold text-foreground mb-1">{lesson.title}</h4>
-                              <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                                <Clock className="w-3 h-3" />
-                                <span>{lesson.duration}</span>
-                              </div>
-                            </div>
-                            <Button
-                              size="sm"
-                              variant={lesson.completed ? "outline" : "default"}
-                              onClick={() => handleLessonComplete(lesson.id)}
-                              disabled={lesson.completed}
-                              className="ml-4"
-                            >
-                              {lesson.completed ? "Completed" : "Mark Done"}
-                            </Button>
+              
+              {loadingLessons ? (
+                <div className="text-center py-12">
+                  <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto mb-4"></div>
+                  <p className="text-muted-foreground">Generating lessons from your project...</p>
+                </div>
+              ) : lessons.length === 0 ? (
+                <div className="text-center py-12">
+                  <BookOpen className="w-16 h-16 text-primary/50 mx-auto mb-4" />
+                  <p className="text-muted-foreground mb-2">
+                    {projectId ? "Click 'Refresh Lessons' to generate lessons" : "Select a project to generate lessons"}
+                  </p>
+                </div>
+              ) : (
+                <ScrollArea className="h-[600px]">
+                  <div className="space-y-6">
+                    {lessons.map((lesson, index) => (
+                      <div
+                        key={index}
+                        className="p-6 bg-muted/30 rounded-lg border border-primary/20 hover:border-primary/50 transition-colors"
+                      >
+                        <div className="flex items-start gap-3 mb-4">
+                          <Badge variant="default" className="mt-1">
+                            Lesson {index + 1}
+                          </Badge>
+                          <div className="flex-1">
+                            <h4 className="font-bold text-lg text-foreground mb-2">{lesson.title}</h4>
+                            <p className="text-sm text-muted-foreground">{lesson.description}</p>
                           </div>
                         </div>
-                      ))}
-                    </div>
-                  </ScrollArea>
-                </Card>
-              </div>
-            </div>
+                        
+                        <div className="space-y-4 mt-4">
+                          <div>
+                            <h5 className="font-semibold text-sm text-primary mb-2">Key Concepts:</h5>
+                            <ul className="list-disc list-inside space-y-1 text-sm text-muted-foreground">
+                              {lesson.concepts.map((concept, i) => (
+                                <li key={i}>{concept}</li>
+                              ))}
+                            </ul>
+                          </div>
+                          
+                          <div>
+                            <h5 className="font-semibold text-sm text-primary mb-2">Practical Tips:</h5>
+                            <ul className="list-disc list-inside space-y-1 text-sm text-muted-foreground">
+                              {lesson.tips.map((tip, i) => (
+                                <li key={i}>{tip}</li>
+                              ))}
+                            </ul>
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </ScrollArea>
+              )}
+            </Card>
           </TabsContent>
 
           {/* Chat History Tab */}
@@ -358,40 +324,6 @@ const LearningHub = () => {
           </TabsContent>
         </Tabs>
 
-        {/* Generate Lesson Dialog */}
-        <Dialog open={showLessonDialog} onOpenChange={setShowLessonDialog}>
-          <DialogContent className="max-w-2xl max-h-[80vh]">
-            <DialogHeader>
-              <DialogTitle>Generate AI-Powered Lesson</DialogTitle>
-            </DialogHeader>
-            <div className="space-y-4">
-              <div>
-                <label className="text-sm mb-2 block">Lesson Topic</label>
-                <Input
-                  value={lessonTopic}
-                  onChange={(e) => setLessonTopic(e.target.value)}
-                  placeholder="e.g., Advanced PCB Layout Techniques"
-                  disabled={isGenerating}
-                />
-              </div>
-              <Button 
-                onClick={generateLesson} 
-                disabled={isGenerating}
-                className="w-full"
-              >
-                {isGenerating ? "Generating..." : "Generate Lesson"}
-              </Button>
-              {lessonContent && (
-                <ScrollArea className="h-[400px] border border-primary/20 rounded-lg p-4">
-                  <div className="prose prose-invert max-w-none">
-                    <pre className="whitespace-pre-wrap text-sm">{lessonContent}</pre>
-                  </div>
-                </ScrollArea>
-              )}
-            </div>
-          </DialogContent>
-        </Dialog>
-
         {/* Project Analysis Dialog */}
         <Dialog open={showAnalysisDialog} onOpenChange={setShowAnalysisDialog}>
           <DialogContent className="max-w-2xl">
@@ -406,15 +338,15 @@ const LearningHub = () => {
                   onChange={(e) => setAnalysisProject(e.target.value)}
                   placeholder="Describe your project in detail..."
                   className="min-h-[150px]"
-                  disabled={isGenerating}
+                  disabled={loadingLessons}
                 />
               </div>
               <Button 
                 onClick={analyzeProject} 
-                disabled={isGenerating}
+                disabled={loadingLessons}
                 className="w-full"
               >
-                {isGenerating ? "Analyzing..." : "Analyze Project"}
+                {loadingLessons ? "Analyzing..." : "Analyze Project"}
               </Button>
             </div>
           </DialogContent>
