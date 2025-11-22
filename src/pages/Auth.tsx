@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
@@ -8,6 +8,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { toast } from "@/hooks/use-toast";
 import krisLogo from "@/assets/kris-logo.jpg";
 import { Loader2 } from "lucide-react";
+import welcomeSound from "@/assets/kris-welcome.mp3";
 
 const Auth = () => {
   const navigate = useNavigate();
@@ -18,6 +19,7 @@ const Auth = () => {
   const [accessCode, setAccessCode] = useState("");
   const [isAccessGranted, setIsAccessGranted] = useState(false);
   const ACCESS_CODE = "KRIS2025";
+  const audioRef = useRef<HTMLAudioElement | null>(null);
 
   useEffect(() => {
     supabase.auth.getSession().then(({ data: { session } }) => {
@@ -41,6 +43,19 @@ const Auth = () => {
     }
   };
 
+  const playWelcomeSound = () => {
+    try {
+      if (!audioRef.current) {
+        audioRef.current = new Audio(welcomeSound);
+      }
+      audioRef.current.play().catch(err => {
+        console.log('Audio autoplay prevented:', err);
+      });
+    } catch (error) {
+      console.log('Error playing welcome sound:', error);
+    }
+  };
+
   const handleAuth = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
@@ -49,6 +64,7 @@ const Auth = () => {
       if (isLogin) {
         const { error } = await supabase.auth.signInWithPassword({ email, password });
         if (error) throw error;
+        playWelcomeSound();
         toast({ title: "Welcome back!", description: "Successfully logged in to KRIS Laboratory." });
       } else {
         const { error } = await supabase.auth.signUp({
