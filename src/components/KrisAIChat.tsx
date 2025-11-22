@@ -9,6 +9,7 @@ import { Send, Bot, Mic, Image as ImageIcon, Search, Code, Brain, Maximize2, Min
 import { toast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import krisLogo from "@/assets/kris-logo.jpg";
+import welcomeSound from "@/assets/kris-welcome.mp3";
 import { VoiceMode } from "./VoiceMode";
 import { useNavigate } from "react-router-dom";
 import { Badge } from "@/components/ui/badge";
@@ -80,6 +81,7 @@ export const KrisAIChat = ({ open, onOpenChange, contextData }: KrisAIChatProps)
   const [editingMessageId, setEditingMessageId] = useState<string | null>(null);
   const [editingMessageContent, setEditingMessageContent] = useState("");
   const [conversationTitle, setConversationTitle] = useState<string>("");
+  const welcomeAudioRef = useRef<HTMLAudioElement | null>(null);
 
   // Get authenticated user ID
   useEffect(() => {
@@ -88,13 +90,27 @@ export const KrisAIChat = ({ open, onOpenChange, contextData }: KrisAIChatProps)
     });
   }, []);
 
-  // Load conversations and image library on open
+  // Load conversations and image library on open, play welcome sound
   useEffect(() => {
     if (open) {
       loadConversations();
       loadImageLibrary();
+      playWelcomeSound();
     }
   }, [open]);
+
+  const playWelcomeSound = () => {
+    try {
+      if (!welcomeAudioRef.current) {
+        welcomeAudioRef.current = new Audio(welcomeSound);
+      }
+      welcomeAudioRef.current.play().catch(err => {
+        console.log('Audio autoplay prevented:', err);
+      });
+    } catch (error) {
+      console.log('Error playing welcome sound:', error);
+    }
+  };
 
   // Handle scroll detection for scroll-to-bottom button
   useEffect(() => {

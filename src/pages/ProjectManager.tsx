@@ -38,6 +38,8 @@ const ProjectManager = () => {
   const [projectFiles, setProjectFiles] = useState<File[]>([]);
   const [includeChatHistory, setIncludeChatHistory] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const [lessons, setLessons] = useState<any[]>([]);
+  const [loadingLessons, setLoadingLessons] = useState(false);
   const [workflow, setWorkflow] = useState<WorkflowStep[]>([
     { step: 1, module: "KRIS", action: "Start project, define goals, create project brief", status: "completed" },
     { step: 2, module: "Learning Hub", action: "Learn about project, load lessons, export summary", status: "completed" },
@@ -54,6 +56,13 @@ const ProjectManager = () => {
       if (user) setUserId(user.id);
     });
   }, []);
+
+  // Auto-load lessons when project is selected
+  useEffect(() => {
+    if (selectedProject) {
+      loadProjectLessons();
+    }
+  }, [selectedProject]);
 
   const loadProjects = async () => {
     try {
@@ -75,6 +84,57 @@ const ProjectManager = () => {
       }
     } catch (error) {
       console.error('Error loading projects:', error);
+    }
+  };
+
+  const loadProjectLessons = async () => {
+    if (!selectedProject) return;
+    
+    setLoadingLessons(true);
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) return;
+
+      // Collect all chat histories
+      const { data: krisConversations } = await supabase
+        .from('conversations')
+        .select('id, name, chat_history(*)')
+        .eq('user_id', userId)
+        .order('updated_at', { ascending: false });
+
+      const krisChatHistories = [];
+      if (krisConversations) {
+        for (const conv of krisConversations) {
+          if (conv.chat_history && conv.chat_history.length > 0) {
+            const chatContent = conv.chat_history
+              .map((msg: any) => `${msg.role}: ${msg.content}`)
+              .join('\n');
+            krisChatHistories.push({
+              source: 'KRIS',
+              conversation: conv.name,
+              content: chatContent
+            });
+          }
+        }
+      }
+
+      // Generate lessons automatically
+      const { data: lessonsData, error } = await supabase.functions.invoke('generate-project-lessons', {
+        headers: { Authorization: `Bearer ${session.access_token}` },
+        body: {
+          projectTitle: selectedProject.title,
+          projectDescription: selectedProject.description,
+          chatHistories: krisChatHistories
+        }
+      });
+
+      if (!error && lessonsData?.lessons) {
+        setLessons(lessonsData.lessons);
+      }
+    } catch (error) {
+      console.error('Error loading lessons:', error);
+    } finally {
+      setLoadingLessons(false);
     }
   };
 
@@ -584,11 +644,45 @@ ${new Date().toLocaleString()}`;
             </div>
           </Card>
 
-          {/* Workflow Steps */}
+          {/* Lessons & Workflow */}
           <Card className="lg:col-span-2 bg-card/80 backdrop-blur-sm border-primary/30 p-6">
-            <h2 className="text-xl font-semibold text-primary mb-4">Project Workflow</h2>
+            <div className="flex items-center justify-between mb-4">
+              <h2 className="text-xl font-semibold text-primary">Auto-Generated Lessons</h2>
+              <Badge variant="outline">{lessons.length} Lessons</Badge>
+            </div>
             
-            <ScrollArea className="h-[600px]">
+            {loadingLessons ? (
+              <div className="text-center py-8 text-muted-foreground">
+                Loading lessons...
+              </div>
+            ) : lessons.length > 0 ? (
+              <ScrollArea className="h-[300px] mb-6">
+                <div className="space-y-3">
+                  {lessons.map((lesson: any, index: number) => (
+                    <div
+                      key={index}
+                      className="p-4 rounded-lg border border-primary/20 bg-muted/30 hover:bg-primary/5 transition-all"
+                    >
+                      <h4 className="font-semibold text-primary mb-2">{lesson.title}</h4>
+                      <p className="text-sm text-muted-foreground mb-2">{lesson.description}</p>
+                      <div className="flex items-center gap-2 text-xs">
+                        <Badge variant="outline">{lesson.category}</Badge>
+                        <span className="text-muted-foreground">•</span>
+                        <span className="text-muted-foreground">{lesson.duration || '5-10 min'}</span>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </ScrollArea>
+            ) : (
+              <div className="text-center py-8 text-muted-foreground mb-6">
+                {selectedProject ? 'Generate documentary to create lessons' : 'Select a project to view lessons'}
+              </div>
+            )}
+
+            <h2 className="text-xl font-semibold text-primary mb-4 mt-6">Project Workflow</h2>
+            
+            <ScrollArea className="h-[300px]">
               <div className="space-y-3">
                  {workflow.map((item) => (
                   <div
