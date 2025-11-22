@@ -1,1 +1,44 @@
 project_id = "yolrgfrsikakozldcarq"
+
+[auth]
+enable_signup = true
+enable_anonymous_signups = false
+
+[api]
+enabled = true
+
+[functions.ai-scientist-chat]
+verify_jwt = true
+
+[functions.experiment-ai]
+verify_jwt = true
+
+[functions.explain-wiring]
+verify_jwt = true
+
+[functions.generate-3d-description]
+verify_jwt = true
+
+[functions.generate-image]
+verify_jwt = true
+
+[functions.generate-lesson]
+verify_jwt = true
+
+[functions.kris-chat]
+verify_jwt = true
+
+[functions.simulate-project]
+verify_jwt = true
+
+[functions.manage-project]
+verify_jwt = true
+
+[functions.generate-chat-title]
+verify_jwt = false
+
+[functions.generate-project-lessons]
+verify_jwt = true
+
+[functions.generate-project-documentary]
+verify_jwt = true
