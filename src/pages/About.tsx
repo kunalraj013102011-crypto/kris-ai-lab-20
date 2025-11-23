@@ -1,7 +1,8 @@
 import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
-import { ArrowLeft } from "lucide-react";
+import { ArrowLeft, Mail, Linkedin, Github } from "lucide-react";
 import krisLogo from "@/assets/kris-logo.jpg";
+import creatorPhoto from "@/assets/creator-photo.jpg";
 
 const About = () => {
   const navigate = useNavigate();
@@ -24,6 +25,7 @@ const About = () => {
 
       {/* Main Content */}
       <article className="container mx-auto px-4 py-12 max-w-4xl">
+        {/* KRIS Lab Section */}
         <div className="text-center mb-12">
           <img 
             src={krisLogo} 
@@ -37,8 +39,7 @@ const About = () => {
           </h1>
         </div>
 
-        {/* Main Content */}
-        <section className="bg-card/50 backdrop-blur-sm rounded-lg p-8 border border-primary/20 space-y-6">
+        <section className="bg-card/50 backdrop-blur-sm rounded-lg p-8 border border-primary/20 space-y-6 mb-12">
           <p className="text-base md:text-lg text-muted-foreground leading-relaxed">
             Kris AI Lab is a future-driven innovation platform designed to accelerate how people learn, think, and create.
           </p>
@@ -55,6 +56,52 @@ const About = () => {
             Our vision is simple:<br />
             To unlock a world where anyone can invent the future.
           </p>
+        </section>
+
+        {/* Creator Section */}
+        <section className="bg-card/50 backdrop-blur-sm rounded-lg p-8 border border-primary/20">
+          <h2 className="text-3xl md:text-4xl font-bold mb-8 text-center text-primary neon-glow">
+            About the Creator
+          </h2>
+          
+          <div className="flex flex-col md:flex-row items-center gap-8">
+            <div className="flex-shrink-0">
+              <img 
+                src={creatorPhoto} 
+                alt="KRIS Laboratory Creator" 
+                className="w-48 h-48 md:w-56 md:h-56 rounded-lg neon-border object-cover"
+                width="224"
+                height="224"
+              />
+            </div>
+            
+            <div className="flex-1 space-y-4 text-center md:text-left">
+              <h3 className="text-2xl font-bold text-foreground">
+                Innovator & Engineering Enthusiast
+              </h3>
+              <p className="text-base md:text-lg text-muted-foreground leading-relaxed">
+                The visionary behind KRIS Laboratory, dedicated to democratizing advanced engineering tools and making innovation accessible to everyone. With a passion for AI, robotics, and education, the creator has built this platform to empower the next generation of inventors and problem-solvers.
+              </p>
+              <p className="text-base md:text-lg text-muted-foreground leading-relaxed">
+                Combining expertise in artificial intelligence, circuit design, and software development, KRIS Lab represents years of work toward creating an all-in-one innovation ecosystem that bridges the gap between imagination and reality.
+              </p>
+              
+              <div className="flex gap-4 justify-center md:justify-start pt-4">
+                <Button variant="outline" size="sm" className="gap-2">
+                  <Mail className="w-4 h-4" />
+                  Contact
+                </Button>
+                <Button variant="outline" size="sm" className="gap-2">
+                  <Linkedin className="w-4 h-4" />
+                  LinkedIn
+                </Button>
+                <Button variant="outline" size="sm" className="gap-2">
+                  <Github className="w-4 h-4" />
+                  GitHub
+                </Button>
+              </div>
+            </div>
+          </div>
         </section>
 
         {/* Keywords Footer */}

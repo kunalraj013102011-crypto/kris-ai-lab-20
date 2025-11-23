@@ -6,7 +6,6 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { Card } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
-import { Progress } from "@/components/ui/progress";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -27,13 +26,97 @@ interface ChatHistoryItem {
   summary: string;
 }
 
+// Pre-generated default lessons for immediate access
+const DEFAULT_LESSONS: Lesson[] = [
+  {
+    title: "Basic Engineering Fundamentals",
+    description: "Understanding the core principles of engineering design and component selection for electronic projects.",
+    concepts: [
+      "Voltage, current, and resistance relationships (Ohm's Law)",
+      "Component ratings and tolerances",
+      "Power calculations and heat dissipation",
+      "Circuit protection and safety measures"
+    ],
+    tips: [
+      "Always check voltage and current ratings before connecting components",
+      "Use multimeters to verify connections before powering circuits",
+      "Start with breadboard prototypes before soldering",
+      "Keep datasheets handy for all components you're using"
+    ]
+  },
+  {
+    title: "Connection of Components",
+    description: "Learn proper techniques for connecting electronic components and creating reliable circuits.",
+    concepts: [
+      "Series vs parallel connections",
+      "Proper wire gauge selection",
+      "Terminal connections and crimping",
+      "Breadboard layout best practices"
+    ],
+    tips: [
+      "Color-code your wires for easier troubleshooting",
+      "Keep connections short to minimize resistance",
+      "Use strain relief on all cable connections",
+      "Document your wiring with clear diagrams"
+    ]
+  },
+  {
+    title: "Circuit Design Principles",
+    description: "Master the fundamentals of designing functional and efficient electronic circuits.",
+    concepts: [
+      "Signal flow and circuit topology",
+      "Impedance matching",
+      "Grounding and noise reduction",
+      "Component placement strategies"
+    ],
+    tips: [
+      "Plan your circuit layout before building",
+      "Keep analog and digital sections separated",
+      "Use bypass capacitors near power pins",
+      "Test each stage independently"
+    ]
+  },
+  {
+    title: "3D Modeling for Engineering",
+    description: "Introduction to creating accurate 3D models of your engineering projects and prototypes.",
+    concepts: [
+      "Parametric vs direct modeling",
+      "Dimensional accuracy and tolerances",
+      "Assembly constraints and mates",
+      "Export formats for manufacturing"
+    ],
+    tips: [
+      "Start with simple sketches and extrude",
+      "Use reference planes for complex geometries",
+      "Apply real-world measurements from the start",
+      "Create assembly drawings with exploded views"
+    ]
+  },
+  {
+    title: "Project Simulation Basics",
+    description: "Learn how to simulate your designs before physical implementation to catch issues early.",
+    concepts: [
+      "SPICE simulation fundamentals",
+      "Transient and AC analysis",
+      "Monte Carlo analysis for tolerances",
+      "Thermal simulation"
+    ],
+    tips: [
+      "Verify simulation results with calculations",
+      "Use realistic component models",
+      "Run worst-case scenarios",
+      "Compare simulated vs measured results"
+    ]
+  }
+];
+
 const LearningHub = () => {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const projectId = searchParams.get('projectId');
   const projectName = searchParams.get('projectName');
   
-  const [lessons, setLessons] = useState<Lesson[]>([]);
+  const [lessons, setLessons] = useState<Lesson[]>(DEFAULT_LESSONS);
   const [loadingLessons, setLoadingLessons] = useState(false);
 
   const [chatHistory] = useState<ChatHistoryItem[]>([
@@ -92,7 +175,7 @@ const LearningHub = () => {
 
       if (error) throw error;
 
-      setLessons(data.lessons || []);
+      setLessons(data.lessons || DEFAULT_LESSONS);
       toast({
         title: "Lessons Generated",
         description: `Generated ${data.lessons?.length || 0} lessons based on your project`,
@@ -104,6 +187,7 @@ const LearningHub = () => {
         description: error.message || "Could not generate lessons",
         variant: "destructive",
       });
+      setLessons(DEFAULT_LESSONS); // Fallback to default lessons
     } finally {
       setLoadingLessons(false);
     }
@@ -213,13 +297,6 @@ const LearningHub = () => {
                 <div className="text-center py-12">
                   <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto mb-4"></div>
                   <p className="text-muted-foreground">Generating lessons from your project...</p>
-                </div>
-              ) : lessons.length === 0 ? (
-                <div className="text-center py-12">
-                  <BookOpen className="w-16 h-16 text-primary/50 mx-auto mb-4" />
-                  <p className="text-muted-foreground mb-2">
-                    {projectId ? "Click 'Refresh Lessons' to generate lessons" : "Select a project to generate lessons"}
-                  </p>
                 </div>
               ) : (
                 <ScrollArea className="h-[600px]">
