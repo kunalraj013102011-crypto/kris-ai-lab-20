@@ -74,17 +74,16 @@ const Welcome = () => {
           loading="eager"
         />
         
-        <h1 className="text-4xl md:text-5xl font-bold mb-4 neon-glow">
+        <h1 className="text-4xl md:text-6xl font-bold mb-6 neon-glow">
           KRIS Laboratory
         </h1>
-        <p className="text-xl md:text-2xl text-primary/90 mb-4 font-semibold">
-          Virtual AI Engineering & Robotics Innovation Lab
+        <p className="text-2xl md:text-3xl text-primary/90 mb-6 font-bold tracking-wide">
+          Think Beyond. Build Beyond.
         </p>
         
-        <section className="mb-8 max-w-2xl mx-auto">
+        <section className="mb-8 max-w-3xl mx-auto">
           <p className="text-base md:text-lg text-muted-foreground leading-relaxed text-center">
-            <strong>KRIS Laboratory</strong> is a next-generation AI engineering system created by <strong>Kunal Raj</strong>, combining AI-powered tools, robotics simulation, circuit design, and 3D modeling in one intelligent workspace.
-            Designed for engineers and innovators to accelerate development with advanced automation and expert AI assistance.
+            A next-generation virtual innovation lab where creators can think, research, simulate, and build with intelligent precision. Powered by advanced engineering AI, KRIS Laboratory transforms raw imagination into engineered reality — enabling innovators to design circuits, generate 3D models, conduct simulations, perform experiments, and build complete projects in one unified space.
           </p>
         </section>
 

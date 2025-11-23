@@ -1,0 +1,16 @@
+{
+  "name": "KRIS Laboratory",
+  "short_name": "KRIS Lab",
+  "description": "A next-generation virtual innovation lab where creators can think, research, simulate, and build with intelligent precision.",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#0EA5E9",
+  "theme_color": "#0EA5E9",
+  "icons": [
+    {
+      "src": "https://storage.googleapis.com/gpt-engineer-file-uploads/R6zWruPzYINJ6GhrGvYenJEbFPO2/uploads/1760862114877-IMG-20251018-WA0002.jpg",
+      "sizes": "512x512",
+      "type": "image/jpeg"
+    }
+  ]
+}
