@@ -740,7 +740,7 @@ Remember: I'm your friend and collaborator, here to help you explore ideas, lear
         headers: {
           'Authorization': `Bearer ${OPENROUTER_API_KEY}`,
           'Content-Type': 'application/json',
-          'HTTP-Referer': 'https://krisailab.vercel.app',
+          'HTTP-Referer': 'https://krisailab.com',
           'X-Title': 'KRIS AI Lab'
         },
         body: JSON.stringify({
