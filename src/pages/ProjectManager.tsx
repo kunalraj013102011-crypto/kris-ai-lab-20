@@ -45,13 +45,21 @@ const ProjectManager = () => {
   const [showVoiceMode, setShowVoiceMode] = useState(false);
   const [userId, setUserId] = useState<string>("");
   const [showChatUpload, setShowChatUpload] = useState(false);
-  const [uploadedChatFiles, setUploadedChatFiles] = useState<File[]>([]);
+  const [availableConversations, setAvailableConversations] = useState<Array<{
+    id: string;
+    name: string;
+    module: string;
+    messageCount: number;
+    lastMessage: string;
+    updatedAt: string;
+  }>>([]);
+  const [selectedConversations, setSelectedConversations] = useState<Set<string>>(new Set());
   const [isGenerating, setIsGenerating] = useState(false);
   const [progress, setProgress] = useState(0);
-  const fileInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     loadProjects();
+    loadAvailableConversations();
     supabase.auth.getUser().then(({ data: { user } }) => {
       if (user) setUserId(user.id);
     });
@@ -74,6 +82,58 @@ const ProjectManager = () => {
       setProjects(data.projects || []);
     } catch (error) {
       console.error('Error loading projects:', error);
+    }
+  };
+
+  const loadAvailableConversations = async () => {
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
+
+      const { data: conversations, error } = await supabase
+        .from('conversations')
+        .select('id, name, created_at, updated_at')
+        .eq('user_id', user.id)
+        .order('updated_at', { ascending: false });
+
+      if (error) throw error;
+
+      const conversationsWithDetails = await Promise.all(
+        (conversations || []).map(async (conv) => {
+          const { data: messages } = await supabase
+            .from('chat_history')
+            .select('content, role')
+            .eq('conversation_id', conv.id)
+            .order('created_at', { ascending: false })
+            .limit(1);
+
+          const { count } = await supabase
+            .from('chat_history')
+            .select('*', { count: 'exact', head: true })
+            .eq('conversation_id', conv.id);
+
+          let module = 'General';
+          const name = conv.name?.toLowerCase() || '';
+          if (name.includes('kris')) module = 'KRIS';
+          else if (name.includes('scientist')) module = 'AI Scientist';
+          else if (name.includes('circuit')) module = 'Circuit Canvas';
+          else if (name.includes('3d')) module = '3D Lab';
+          else if (name.includes('simulation')) module = 'Simulation';
+
+          return {
+            id: conv.id,
+            name: conv.name || 'Untitled Conversation',
+            module,
+            messageCount: count || 0,
+            lastMessage: messages?.[0]?.content?.substring(0, 100) || 'No messages',
+            updatedAt: conv.updated_at
+          };
+        })
+      );
+
+      setAvailableConversations(conversationsWithDetails);
+    } catch (error) {
+      console.error('Error loading conversations:', error);
     }
   };
 
@@ -146,21 +206,24 @@ const ProjectManager = () => {
     loadProjectReports(project.id);
   };
 
-  const handleFileUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
-    const files = event.target.files;
-    if (!files) return;
-    
-    const newFiles = Array.from(files);
-    setUploadedChatFiles(prev => [...prev, ...newFiles]);
-    
-    toast({
-      title: "Chat Files Added",
-      description: `${newFiles.length} file(s) added for documentary generation`
+  const toggleConversationSelection = (convId: string) => {
+    setSelectedConversations(prev => {
+      const newSet = new Set(prev);
+      if (newSet.has(convId)) {
+        newSet.delete(convId);
+      } else {
+        newSet.add(convId);
+      }
+      return newSet;
     });
   };
 
-  const removeFile = (index: number) => {
-    setUploadedChatFiles(prev => prev.filter((_, i) => i !== index));
+  const selectAllConversations = () => {
+    setSelectedConversations(new Set(availableConversations.map(c => c.id)));
+  };
+
+  const clearConversationSelection = () => {
+    setSelectedConversations(new Set());
   };
 
   const handleGenerateDocumentary = async () => {
@@ -168,6 +231,15 @@ const ProjectManager = () => {
       toast({
         title: "No Project Selected",
         description: "Please select a project first",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    if (selectedConversations.size === 0) {
+      toast({
+        title: "No Conversations Selected",
+        description: "Please select at least one conversation",
         variant: "destructive"
       });
       return;
@@ -182,40 +254,28 @@ const ProjectManager = () => {
         throw new Error('Authentication required');
       }
 
-      // Phase 1: Collect all chat histories
+      // Phase 1: Collect selected chat histories
       toast({ title: "Collecting Chat Histories", description: "Gathering conversation data..." });
       setProgress(15);
       
-      // Read uploaded chat files
       const chatHistories = [];
-      for (const file of uploadedChatFiles) {
-        const content = await file.text();
-        chatHistories.push({
-          source: file.name.includes('KRIS') ? 'KRIS' : 'AI Scientist',
-          conversation: file.name,
-          content: content
-        });
-      }
+      
+      for (const convId of Array.from(selectedConversations)) {
+        const conversation = availableConversations.find(c => c.id === convId);
+        if (!conversation) continue;
 
-      // Also get KRIS conversations from database
-      const { data: krisConversations } = await supabase
-        .from('conversations')
-        .select('id, name, chat_history(*)')
-        .eq('user_id', userId)
-        .order('updated_at', { ascending: false });
+        const { data: messages } = await supabase
+          .from('chat_history')
+          .select('content, role, created_at')
+          .eq('conversation_id', convId)
+          .order('created_at', { ascending: true });
 
-      if (krisConversations) {
-        for (const conv of krisConversations) {
-          if (conv.chat_history && conv.chat_history.length > 0) {
-            const chatContent = conv.chat_history
-              .map((msg: any) => `${msg.role}: ${msg.content}`)
-              .join('\n');
-            chatHistories.push({
-              source: 'KRIS',
-              conversation: conv.name,
-              content: chatContent
-            });
-          }
+        if (messages && messages.length > 0) {
+          chatHistories.push({
+            source: `${conversation.module} - ${conversation.name}`,
+            conversation: conversation.name,
+            content: messages.map((msg: any) => `${msg.role}: ${msg.content}`).join('\n')
+          });
         }
       }
 
@@ -313,7 +373,7 @@ ${new Date().toLocaleString()}`;
         setIsGenerating(false);
         setProgress(0);
         setShowChatUpload(false);
-        setUploadedChatFiles([]);
+        clearConversationSelection();
         toast({
           title: "Documentary Generated Successfully",
           description: "Project documentary and lessons are ready"
@@ -509,17 +569,22 @@ ${new Date().toLocaleString()}`;
                     className="w-full bg-primary hover:bg-primary/90"
                   >
                     <Upload className="w-4 h-4 mr-2" />
-                    Upload Chat History
+                    Select Chat Histories
                   </Button>
                   <Button 
                     onClick={handleGenerateDocumentary}
-                    disabled={isGenerating || uploadedChatFiles.length === 0}
+                    disabled={isGenerating || selectedConversations.size === 0}
                     className="w-full"
                     variant="outline"
                   >
                     <Sparkles className="w-4 h-4 mr-2" />
                     {isGenerating ? "Generating..." : "Generate Documentary"}
                   </Button>
+                  {selectedConversations.size > 0 && (
+                    <p className="text-xs text-muted-foreground text-center">
+                      {selectedConversations.size} conversation(s) selected
+                    </p>
+                  )}
                 </div>
 
                 {isGenerating && (
@@ -595,72 +660,112 @@ ${new Date().toLocaleString()}`;
         />
       )}
 
-      {/* Chat Upload Dialog */}
+      {/* Chat Selection Dialog */}
       <Dialog open={showChatUpload} onOpenChange={setShowChatUpload}>
-        <DialogContent className="max-w-2xl">
+        <DialogContent className="max-w-4xl max-h-[80vh] overflow-hidden flex flex-col">
           <DialogHeader>
-            <DialogTitle>Upload Chat Histories from App Modules</DialogTitle>
+            <DialogTitle>Select Chat Histories from App Modules</DialogTitle>
           </DialogHeader>
 
-          <div className="space-y-4 py-4">
-            <div>
-              <p className="text-sm text-muted-foreground mb-3">
-                Upload chat history files from KRIS, AI Scientist, or other modules to generate comprehensive project documentation.
+          <div className="flex-1 overflow-y-auto space-y-4 py-4">
+            <div className="flex items-center justify-between">
+              <p className="text-sm text-muted-foreground">
+                Select conversations from your app modules to include in the project
               </p>
-              <input
-                ref={fileInputRef}
-                type="file"
-                multiple
-                accept=".txt,.md,.json"
-                onChange={handleFileUpload}
-                className="hidden"
-              />
-              <Button
-                variant="outline"
-                onClick={() => fileInputRef.current?.click()}
-                className="w-full"
-              >
-                <Upload className="w-4 h-4 mr-2" />
-                Select Chat History Files
-              </Button>
-
-              {uploadedChatFiles.length > 0 && (
-                <div className="mt-3 space-y-2">
-                  <p className="text-sm text-muted-foreground">Uploaded Files:</p>
-                  {uploadedChatFiles.map((file, index) => (
-                    <div
-                      key={index}
-                      className="flex items-center justify-between p-2 bg-muted rounded"
-                    >
-                      <span className="text-sm truncate flex-1">{file.name}</span>
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => removeFile(index)}
-                      >
-                        <X className="w-4 h-4" />
-                      </Button>
-                    </div>
-                  ))}
-                </div>
-              )}
+              <div className="flex gap-2">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={selectAllConversations}
+                >
+                  Select All
+                </Button>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={clearConversationSelection}
+                >
+                  Clear
+                </Button>
+              </div>
             </div>
 
-            <Button
-              onClick={() => {
-                setShowChatUpload(false);
-                if (uploadedChatFiles.length > 0) {
-                  toast({
-                    title: "Files Ready",
-                    description: "Chat histories are ready. Click 'Generate Documentary' to create reports."
-                  });
-                }
-              }}
-              disabled={uploadedChatFiles.length === 0}
-              className="w-full"
-            >
-              Done
-            </Button>
+            <div className="space-y-2">
+              {availableConversations.length === 0 ? (
+                <div className="text-center py-12">
+                  <FileText className="w-16 h-16 text-primary/50 mx-auto mb-4" />
+                  <p className="text-muted-foreground mb-2">No chat histories found</p>
+                  <p className="text-sm text-muted-foreground">
+                    Start conversations in the app modules to see them here
+                  </p>
+                </div>
+              ) : (
+                availableConversations.map((conv) => (
+                  <div
+                    key={conv.id}
+                    className={`p-4 border rounded-lg cursor-pointer transition-colors ${
+                      selectedConversations.has(conv.id)
+                        ? 'border-primary bg-primary/5'
+                        : 'border-border hover:border-primary/50'
+                    }`}
+                    onClick={() => toggleConversationSelection(conv.id)}
+                  >
+                    <div className="flex items-start justify-between gap-4">
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-2 mb-1">
+                          <Badge variant="secondary" className="text-xs">
+                            {conv.module}
+                          </Badge>
+                          <span className="font-medium truncate">{conv.name}</span>
+                        </div>
+                        <p className="text-sm text-muted-foreground truncate">
+                          {conv.lastMessage}
+                        </p>
+                        <p className="text-xs text-muted-foreground mt-1">
+                          {conv.messageCount} messages • Updated {new Date(conv.updatedAt).toLocaleDateString()}
+                        </p>
+                      </div>
+                      <div className="flex-shrink-0">
+                        {selectedConversations.has(conv.id) && (
+                          <div className="h-5 w-5 rounded-full bg-primary flex items-center justify-center">
+                            <CheckCircle2 className="h-4 w-4 text-primary-foreground" />
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                ))
+              )}
+            </div>
+          </div>
+
+          <div className="flex justify-between items-center pt-4 border-t">
+            <p className="text-sm text-muted-foreground">
+              {selectedConversations.size} conversation(s) selected
+            </p>
+            <div className="flex gap-2">
+              <Button
+                variant="outline"
+                onClick={() => setShowChatUpload(false)}
+                disabled={isGenerating}
+              >
+                Cancel
+              </Button>
+              <Button
+                onClick={() => {
+                  setShowChatUpload(false);
+                  if (selectedConversations.size > 0) {
+                    toast({
+                      title: "Conversations Selected",
+                      description: "Click 'Generate Documentary' to create project reports"
+                    });
+                  }
+                }}
+                disabled={selectedConversations.size === 0}
+              >
+                Done
+              </Button>
+            </div>
           </div>
         </DialogContent>
       </Dialog>
