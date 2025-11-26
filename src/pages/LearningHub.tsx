@@ -67,7 +67,7 @@ const LearningHub = () => {
     <div className="fixed inset-0 w-full h-full">
       <Button
         onClick={() => navigate("/dashboard")}
-        className="absolute top-4 left-4 z-50 bg-background/80 backdrop-blur-sm hover:bg-background/90"
+        className="absolute top-4 right-4 z-50 bg-background/80 backdrop-blur-sm hover:bg-background/90"
         size="sm"
       >
         <ArrowLeft className="mr-2 h-4 w-4" />
