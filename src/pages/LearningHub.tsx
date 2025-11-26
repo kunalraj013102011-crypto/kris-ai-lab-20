@@ -1,8 +1,12 @@
 import { useEffect, useRef } from "react";
+import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
+import { Button } from "@/components/ui/button";
+import { ArrowLeft } from "lucide-react";
 
 const LearningHub = () => {
   const iframeRef = useRef<HTMLIFrameElement>(null);
+  const navigate = useNavigate();
 
   useEffect(() => {
     // Listen to auth state changes and sync with iframe
@@ -61,6 +65,14 @@ const LearningHub = () => {
 
   return (
     <div className="fixed inset-0 w-full h-full">
+      <Button
+        onClick={() => navigate("/dashboard")}
+        className="absolute top-4 left-4 z-50 bg-background/80 backdrop-blur-sm hover:bg-background/90"
+        size="sm"
+      >
+        <ArrowLeft className="mr-2 h-4 w-4" />
+        Back to Dashboard
+      </Button>
       <iframe
         ref={iframeRef}
         src="https://forge-ai-mentor.lovable.app"
