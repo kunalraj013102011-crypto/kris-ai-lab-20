@@ -75,15 +75,15 @@ const Welcome = () => {
         />
         
         <h1 className="text-4xl md:text-6xl font-bold mb-6 neon-glow">
-          KRIS Laboratory
+          Kris Laboratory — Engineering & AI Research Laboratory
         </h1>
         <p className="text-2xl md:text-3xl text-primary/90 mb-6 font-bold tracking-wide">
-          Think Beyond. Build Beyond.
+          Advanced Engineering, Artificial Intelligence Research & Innovation Lab
         </p>
         
         <section className="mb-8 max-w-3xl mx-auto">
           <p className="text-base md:text-lg text-muted-foreground leading-relaxed text-center">
-            A next-generation virtual innovation lab where creators can think, research, simulate, and build with intelligent precision. Powered by advanced engineering AI, KRIS Laboratory transforms raw imagination into engineered reality — enabling innovators to design circuits, generate 3D models, conduct simulations, perform experiments, and build complete projects in one unified space.
+            Kris Laboratory is a professional Engineering and AI Research Laboratory focused on advanced innovation, simulation, development, AI systems, and applied research. Our research initiatives span AI systems innovation, engineering simulations, automation, and robotics research — empowering researchers, engineers, and innovators to push the boundaries of technology.
           </p>
         </section>
 
@@ -101,7 +101,7 @@ const Welcome = () => {
         
         <footer className="mt-8 text-sm text-muted-foreground">
           <p>
-            Intelligent Development System | Digital Lab Innovation | AI-Driven Engineering Workspace
+            Research & Development | AI Systems | Engineering Innovation | Applied Science
           </p>
         </footer>
       </article>
