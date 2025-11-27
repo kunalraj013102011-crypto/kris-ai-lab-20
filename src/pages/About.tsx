@@ -35,40 +35,43 @@ const About = () => {
             height="128"
           />
           <h1 className="text-4xl md:text-5xl font-bold mb-6 neon-glow">
-            About Kris AI Lab
+            About Kris Laboratory
           </h1>
         </div>
 
         <section className="bg-card/50 backdrop-blur-sm rounded-lg p-8 border border-primary/20 space-y-6 mb-12">
+          <h2 className="text-2xl md:text-3xl font-bold text-primary mb-4">Our Mission</h2>
           <p className="text-base md:text-lg text-muted-foreground leading-relaxed">
-            Kris AI Lab is a future-driven innovation platform designed to accelerate how people learn, think, and create.
+            Kris Laboratory is a professional Engineering and AI Research Laboratory dedicated to advancing the frontiers of technology through innovative research, development, and applied science.
           </p>
           
+          <h2 className="text-2xl md:text-3xl font-bold text-primary mb-4 mt-8">Research Focus</h2>
           <p className="text-base md:text-lg text-muted-foreground leading-relaxed">
-            We combine advanced AI systems with human creativity, enabling students, makers, and researchers to transform raw ideas into functional prototypes, smart systems, and real-world solutions.
+            Our research initiatives span multiple domains including AI Systems Innovation, Engineering Simulations, Automation & Robotics Research, and Applied Artificial Intelligence. We combine cutting-edge research methodologies with practical engineering applications to solve complex technological challenges.
           </p>
           
+          <h2 className="text-2xl md:text-3xl font-bold text-primary mb-4 mt-8">Innovation & Development</h2>
           <p className="text-base md:text-lg text-muted-foreground leading-relaxed">
-            From intelligent explanations to autonomous project generation, Kris acts as your personal innovation engine — guiding you, teaching you, and building with you.
+            Through advanced simulation environments, intelligent development systems, and comprehensive research tools, Kris Laboratory empowers researchers, engineers, and innovators to conduct groundbreaking work in artificial intelligence and engineering domains.
           </p>
           
-          <p className="text-base md:text-lg text-foreground font-semibold leading-relaxed">
-            Our vision is simple:<br />
-            To unlock a world where anyone can invent the future.
+          <p className="text-base md:text-lg text-foreground font-semibold leading-relaxed mt-8">
+            Vision Statement:<br />
+            Advancing engineering and artificial intelligence research to shape the future of technology and innovation.
           </p>
         </section>
 
         {/* Creator Section */}
         <section className="bg-card/50 backdrop-blur-sm rounded-lg p-8 border border-primary/20">
           <h2 className="text-3xl md:text-4xl font-bold mb-8 text-center text-primary neon-glow">
-            About the Creator
+            Research Director
           </h2>
           
           <div className="flex flex-col md:flex-row items-center gap-8">
             <div className="flex-shrink-0">
               <img 
                 src={creatorPhoto} 
-                alt="KRIS Laboratory Creator" 
+                alt="Kris Laboratory Research Director" 
                 className="w-48 h-48 md:w-56 md:h-56 rounded-lg neon-border object-cover"
                 width="224"
                 height="224"
@@ -77,17 +80,17 @@ const About = () => {
             
             <div className="flex-1 space-y-4 text-center md:text-left">
               <h3 className="text-2xl font-bold text-foreground">
-                Innovator & Engineering Enthusiast
+                Principal Researcher & Laboratory Director
               </h3>
               <p className="text-base md:text-lg text-muted-foreground leading-relaxed">
-                The visionary behind KRIS Laboratory, dedicated to democratizing advanced engineering tools and making innovation accessible to everyone. With a passion for AI, robotics, and education, the creator has built this platform to empower the next generation of inventors and problem-solvers.
+                Leading Kris Laboratory's research initiatives in engineering and artificial intelligence, our Research Director brings extensive expertise in AI systems, robotics research, and advanced engineering methodologies. The laboratory's research programs are designed to push the boundaries of what's possible in applied technology and innovation.
               </p>
               <p className="text-base md:text-lg text-muted-foreground leading-relaxed">
-                Combining expertise in artificial intelligence, circuit design, and software development, KRIS Lab represents years of work toward creating an all-in-one innovation ecosystem that bridges the gap between imagination and reality.
+                With a focus on practical applications of theoretical research, the laboratory bridges academic rigor with real-world engineering challenges, creating a comprehensive research environment that fosters innovation across multiple technological domains.
               </p>
               
               <div className="flex gap-4 justify-center md:justify-start pt-4">
-                <Button variant="outline" size="sm" className="gap-2">
+                <Button variant="outline" size="sm" className="gap-2" onClick={() => navigate("/contact")}>
                   <Mail className="w-4 h-4" />
                   Contact
                 </Button>
@@ -107,8 +110,8 @@ const About = () => {
         {/* Keywords Footer */}
         <footer className="mt-12 text-center text-sm text-muted-foreground">
           <p>
-            <strong>Keywords:</strong> Think Beyond Build Beyond | Virtual Innovation Lab | AI Engineering | KRIS Lab | 
-            Intelligent Precision | Circuit Design | 3D Modeling | Engineering Simulation | Project Innovation | AI Lab System
+            <strong>Keywords:</strong> Engineering Laboratory | Research Lab | AI Lab | Innovation Lab | AI Research Center | 
+            Engineering R&D | Artificial Intelligence Research | Technology Lab | Applied Research | Engineering Innovation
           </p>
         </footer>
       </article>
