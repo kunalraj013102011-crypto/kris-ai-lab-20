@@ -17,6 +17,15 @@ import CircuitCanvas from "./pages/CircuitCanvas";
 import ProjectManager from "./pages/ProjectManager";
 import About from "./pages/About";
 import Contact from "./pages/Contact";
+import Services from "./pages/Services";
+import Products from "./pages/Products";
+import Research from "./pages/Research";
+import Innovation from "./pages/Innovation";
+import Collaboration from "./pages/Collaboration";
+import Careers from "./pages/Careers";
+import FAQ from "./pages/FAQ";
+import Privacy from "./pages/Privacy";
+import Terms from "./pages/Terms";
 import NotFound from "./pages/NotFound";
 import { ContextualHelp } from "./components/ContextualHelp";
 
@@ -62,6 +71,15 @@ const App = () => (
           <Route path="/auth" element={<Auth />} />
           <Route path="/about" element={<About />} />
           <Route path="/contact" element={<Contact />} />
+          <Route path="/services" element={<Services />} />
+          <Route path="/products" element={<Products />} />
+          <Route path="/research" element={<Research />} />
+          <Route path="/innovation" element={<Innovation />} />
+          <Route path="/collaboration" element={<Collaboration />} />
+          <Route path="/careers" element={<Careers />} />
+          <Route path="/faq" element={<FAQ />} />
+          <Route path="/privacy" element={<Privacy />} />
+          <Route path="/terms" element={<Terms />} />
           <Route path="/dashboard" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
           <Route path="/ai-scientist" element={<ProtectedRoute><AIScientist /></ProtectedRoute>} />
           <Route path="/learning-hub" element={<ProtectedRoute><LearningHub /></ProtectedRoute>} />
