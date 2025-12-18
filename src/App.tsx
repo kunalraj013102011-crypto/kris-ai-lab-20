@@ -15,6 +15,8 @@ import Simulation from "./pages/Simulation";
 import ThreeDLab from "./pages/ThreeDLab";
 import CircuitCanvas from "./pages/CircuitCanvas";
 import ProjectManager from "./pages/ProjectManager";
+import Workspace from "./pages/Workspace";
+import WorkspaceDetail from "./pages/WorkspaceDetail";
 import About from "./pages/About";
 import Contact from "./pages/Contact";
 import Services from "./pages/Services";
@@ -87,6 +89,8 @@ const App = () => (
           <Route path="/3d-lab" element={<ProtectedRoute><ThreeDLab /></ProtectedRoute>} />
           <Route path="/circuit-canvas" element={<ProtectedRoute><CircuitCanvas /></ProtectedRoute>} />
           <Route path="/project-manager" element={<ProtectedRoute><ProjectManager /></ProtectedRoute>} />
+          <Route path="/workspace" element={<ProtectedRoute><Workspace /></ProtectedRoute>} />
+          <Route path="/workspace/:workspaceId" element={<ProtectedRoute><WorkspaceDetail /></ProtectedRoute>} />
           <Route path="*" element={<NotFound />} />
         </Routes>
       </BrowserRouter>

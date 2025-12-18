@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 import {
   Sidebar,
@@ -11,11 +11,9 @@ import {
   SidebarMenuItem,
   SidebarHeader,
   SidebarFooter,
-  SidebarTrigger,
   useSidebar,
 } from "@/components/ui/sidebar";
 import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
 import {
@@ -35,14 +33,12 @@ import {
   Home,
   Settings,
   User,
-  Palette,
   Globe,
   Info,
   Briefcase,
   ShoppingBag,
   Microscope,
   Lightbulb,
-  GraduationCap,
   Users,
   UserPlus,
   Mail,
@@ -53,6 +49,7 @@ import {
   LogOut,
   Moon,
   Sun,
+  Layers,
 } from "lucide-react";
 import krisLogo from "@/assets/kris-logo.jpg";
 import { supabase } from "@/integrations/supabase/client";
@@ -66,6 +63,7 @@ const mainModules = [
   { title: "3D Lab", url: "/3d-lab", icon: Box },
   { title: "Circuit Canvas", url: "/circuit-canvas", icon: CircuitBoard },
   { title: "Project Manager", url: "/project-manager", icon: FolderKanban },
+  { title: "Workspace", url: "/workspace", icon: Layers },
 ];
 
 const professionalPages = [
@@ -104,6 +102,24 @@ export function DashboardSidebar() {
   
   const [isDarkMode, setIsDarkMode] = useState(true);
   const [selectedLanguage, setSelectedLanguage] = useState("en");
+  const [userName, setUserName] = useState<string | null>(null);
+  const [userEmail, setUserEmail] = useState<string | null>(null);
+
+  useEffect(() => {
+    const fetchUserData = async () => {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (user) {
+        setUserEmail(user.email || null);
+        // Try to get name from user metadata
+        const fullName = user.user_metadata?.full_name || 
+                         user.user_metadata?.name ||
+                         user.email?.split('@')[0] || 
+                         'User';
+        setUserName(fullName);
+      }
+    };
+    fetchUserData();
+  }, []);
 
   const handleLogout = async () => {
     await supabase.auth.signOut();
@@ -270,10 +286,15 @@ export function DashboardSidebar() {
           <DropdownMenuTrigger asChild>
             <Button variant="ghost" className="w-full justify-start gap-2">
               <User className="w-4 h-4" />
-              {!collapsed && <span>Profile</span>}
+              {!collapsed && <span className="truncate">{userName || 'Profile'}</span>}
             </Button>
           </DropdownMenuTrigger>
-          <DropdownMenuContent align="start" className="w-48">
+          <DropdownMenuContent align="start" className="w-56">
+            <div className="px-2 py-1.5">
+              <p className="text-sm font-medium">{userName}</p>
+              <p className="text-xs text-muted-foreground truncate">{userEmail}</p>
+            </div>
+            <DropdownMenuSeparator />
             <DropdownMenuItem onClick={() => navigate("/settings")}>
               <Settings className="w-4 h-4 mr-2" />
               Settings
@@ -289,9 +310,6 @@ export function DashboardSidebar() {
             </DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenu>
-        <Badge variant="outline" className="mt-2 text-xs justify-center">
-          Created by Kunal Raj
-        </Badge>
       </SidebarFooter>
     </Sidebar>
   );
