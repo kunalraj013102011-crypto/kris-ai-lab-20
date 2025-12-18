@@ -171,6 +171,53 @@ export type Database = {
           },
         ]
       }
+      lesson_sections: {
+        Row: {
+          created_at: string
+          full_content: string | null
+          id: string
+          is_expanded: boolean | null
+          lesson_progress_id: string | null
+          section_id: string
+          section_title: string
+          summary: string | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          full_content?: string | null
+          id?: string
+          is_expanded?: boolean | null
+          lesson_progress_id?: string | null
+          section_id: string
+          section_title: string
+          summary?: string | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          full_content?: string | null
+          id?: string
+          is_expanded?: boolean | null
+          lesson_progress_id?: string | null
+          section_id?: string
+          section_title?: string
+          summary?: string | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "lesson_sections_lesson_progress_id_fkey"
+            columns: ["lesson_progress_id"]
+            isOneToOne: false
+            referencedRelation: "user_lesson_progress"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       project_phases: {
         Row: {
           completed_at: string | null

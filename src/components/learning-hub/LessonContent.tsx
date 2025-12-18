@@ -15,6 +15,7 @@ import {
 } from "lucide-react";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
+import { SectionedLesson } from "./SectionedLesson";
 
 interface Lesson {
   id: string;
@@ -47,8 +48,6 @@ interface LessonContentProps {
 }
 
 export function LessonContent({ lesson, progress, customTopic, onProgressUpdate }: LessonContentProps) {
-  const [lessonContent, setLessonContent] = useState<string>('');
-  const [isGenerating, setIsGenerating] = useState(false);
   const [chatMessages, setChatMessages] = useState<ChatMessage[]>([]);
   const [chatInput, setChatInput] = useState('');
   const [isSendingChat, setIsSendingChat] = useState(false);
@@ -60,20 +59,43 @@ export function LessonContent({ lesson, progress, customTopic, onProgressUpdate 
   useEffect(() => {
     if (progress) {
       setCurrentProgressId(progress.id);
-      if (progress.ai_content) {
-        setLessonContent(progress.ai_content);
-      } else if (topic) {
-        generateLesson();
-      }
       fetchChatHistory(progress.id);
     } else if (topic) {
-      generateLesson();
+      // Create a new progress entry for custom topics
+      createProgressEntry();
     }
   }, [progress, topic]);
 
   useEffect(() => {
     chatEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [chatMessages]);
+
+  const createProgressEntry = async () => {
+    if (!topic || currentProgressId) return;
+    
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
+
+      const { data: newProgress } = await supabase
+        .from('user_lesson_progress')
+        .insert({
+          user_id: user.id,
+          lesson_id: lesson?.id || null,
+          custom_topic: lesson ? null : topic,
+          status: 'in_progress'
+        })
+        .select()
+        .single();
+      
+      if (newProgress) {
+        setCurrentProgressId(newProgress.id);
+        onProgressUpdate();
+      }
+    } catch (error) {
+      console.error('Error creating progress entry:', error);
+    }
+  };
 
   const fetchChatHistory = async (progressId: string) => {
     const { data } = await supabase
@@ -84,65 +106,6 @@ export function LessonContent({ lesson, progress, customTopic, onProgressUpdate 
     
     if (data) {
       setChatMessages(data.map(msg => ({ id: msg.id, role: msg.role as 'user' | 'assistant', content: msg.content })));
-    }
-  };
-
-  const generateLesson = async () => {
-    if (!topic) return;
-    
-    setIsGenerating(true);
-    try {
-      const { data: { session } } = await supabase.auth.getSession();
-      if (!session) throw new Error('Not authenticated');
-
-      const response = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/learning-hub-chat`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${session.access_token}`,
-        },
-        body: JSON.stringify({ action: 'generate_lesson', topic }),
-      });
-
-      if (!response.ok) throw new Error('Failed to generate lesson');
-
-      const data = await response.json();
-      setLessonContent(data.content);
-
-      // Save or update progress
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) return;
-
-      if (currentProgressId) {
-        await supabase
-          .from('user_lesson_progress')
-          .update({ ai_content: data.content, updated_at: new Date().toISOString() })
-          .eq('id', currentProgressId);
-      } else {
-        const { data: newProgress } = await supabase
-          .from('user_lesson_progress')
-          .insert({
-            user_id: user.id,
-            lesson_id: lesson?.id || null,
-            custom_topic: lesson ? null : topic,
-            ai_content: data.content,
-            status: 'in_progress'
-          })
-          .select()
-          .single();
-        
-        if (newProgress) {
-          setCurrentProgressId(newProgress.id);
-          onProgressUpdate();
-        }
-      }
-
-      toast.success('Lesson generated successfully!');
-    } catch (error) {
-      console.error('Error generating lesson:', error);
-      toast.error('Failed to generate lesson');
-    } finally {
-      setIsGenerating(false);
     }
   };
 
@@ -166,6 +129,7 @@ export function LessonContent({ lesson, progress, customTopic, onProgressUpdate 
         },
         body: JSON.stringify({
           action: 'chat',
+          topic,
           lessonProgressId: currentProgressId,
           message: userMessage,
           chatHistory: chatMessages,
@@ -200,31 +164,32 @@ export function LessonContent({ lesson, progress, customTopic, onProgressUpdate 
     }
   };
 
-  const renderMarkdown = (content: string) => {
-    // Simple markdown rendering
-    return content
-      .split('\n')
-      .map((line, i) => {
-        if (line.startsWith('# ')) {
-          return <h1 key={i} className="text-2xl font-bold mt-6 mb-4 text-foreground">{line.slice(2)}</h1>;
-        }
-        if (line.startsWith('## ')) {
-          return <h2 key={i} className="text-xl font-semibold mt-5 mb-3 text-foreground">{line.slice(3)}</h2>;
-        }
-        if (line.startsWith('### ')) {
-          return <h3 key={i} className="text-lg font-medium mt-4 mb-2 text-foreground">{line.slice(4)}</h3>;
-        }
-        if (line.startsWith('- ')) {
-          return <li key={i} className="ml-4 text-muted-foreground">{line.slice(2)}</li>;
-        }
-        if (line.startsWith('```')) {
-          return null; // Skip code block markers
-        }
-        if (line.trim() === '') {
-          return <br key={i} />;
-        }
-        return <p key={i} className="text-muted-foreground mb-2">{line}</p>;
-      });
+  const renderChatMarkdown = (content: string) => {
+    return content.split('\n').map((line, i) => {
+      if (line.startsWith('**') && line.includes(':**')) {
+        const [label, rest] = line.split(':**');
+        return (
+          <p key={i} className="mb-2">
+            <span className="font-semibold text-primary">{label.replace('**', '')}:</span>
+            {rest}
+          </p>
+        );
+      }
+      if (line.startsWith('- ')) {
+        return <li key={i} className="ml-4 text-foreground list-disc">{line.slice(2)}</li>;
+      }
+      if (line.match(/^\d+\./)) {
+        return <li key={i} className="ml-4 text-foreground list-decimal">{line.replace(/^\d+\./, '').trim()}</li>;
+      }
+      if (line.trim() === '') {
+        return <br key={i} />;
+      }
+      // Handle inline bold and formatting
+      const processed = line
+        .replace(/\*\*(.*?)\*\*/g, '<strong class="text-primary">$1</strong>')
+        .replace(/`(.*?)`/g, '<code class="bg-muted px-1 rounded text-sm">$1</code>');
+      return <p key={i} className="text-foreground mb-1" dangerouslySetInnerHTML={{ __html: processed }} />;
+    });
   };
 
   if (!topic) {
@@ -272,20 +237,11 @@ export function LessonContent({ lesson, progress, customTopic, onProgressUpdate 
         </TabsList>
 
         <TabsContent value="lesson" className="flex-1 mt-0">
-          <ScrollArea className="h-[calc(100vh-200px)]">
-            <div className="p-6">
-              {isGenerating ? (
-                <div className="flex flex-col items-center justify-center py-12">
-                  <Loader2 className="h-12 w-12 text-primary animate-spin mb-4" />
-                  <p className="text-muted-foreground">Generating comprehensive lesson...</p>
-                </div>
-              ) : (
-                <div className="prose prose-invert max-w-none">
-                  {renderMarkdown(lessonContent)}
-                </div>
-              )}
-            </div>
-          </ScrollArea>
+          <SectionedLesson 
+            topic={topic} 
+            lessonProgressId={currentProgressId}
+            onProgressUpdate={onProgressUpdate}
+          />
         </TabsContent>
 
         <TabsContent value="chat" className="flex-1 mt-0 flex flex-col">
@@ -294,25 +250,36 @@ export function LessonContent({ lesson, progress, customTopic, onProgressUpdate 
               {chatMessages.length === 0 && (
                 <div className="text-center py-8">
                   <MessageSquare className="h-12 w-12 text-primary/50 mx-auto mb-3" />
-                  <p className="text-muted-foreground">Ask questions about this lesson</p>
+                  <h3 className="font-semibold text-foreground mb-2">STEM Problem Solver</h3>
+                  <p className="text-muted-foreground text-sm max-w-md mx-auto">
+                    Ask any question about this lesson! I'm an expert in Engineering, Math, Physics, Chemistry, and Biology.
+                    I'll show you step-by-step solutions with formulas and explanations.
+                  </p>
                 </div>
               )}
               {chatMessages.map((msg, i) => (
                 <div
                   key={msg.id || i}
                   className={cn(
-                    "p-3 rounded-lg max-w-[80%]",
+                    "p-4 rounded-lg max-w-[85%]",
                     msg.role === 'user' 
                       ? "bg-primary/20 ml-auto" 
                       : "bg-muted"
                   )}
                 >
-                  <p className="text-sm text-foreground whitespace-pre-wrap">{msg.content}</p>
+                  <div className="text-sm text-foreground">
+                    {msg.role === 'assistant' ? renderChatMarkdown(msg.content) : (
+                      <p className="whitespace-pre-wrap">{msg.content}</p>
+                    )}
+                  </div>
                 </div>
               ))}
               {isSendingChat && (
-                <div className="bg-muted p-3 rounded-lg max-w-[80%]">
-                  <Loader2 className="h-4 w-4 animate-spin text-primary" />
+                <div className="bg-muted p-4 rounded-lg max-w-[85%]">
+                  <div className="flex items-center gap-2">
+                    <Loader2 className="h-4 w-4 animate-spin text-primary" />
+                    <span className="text-sm text-muted-foreground">Solving problem...</span>
+                  </div>
                 </div>
               )}
               <div ref={chatEndRef} />
@@ -325,7 +292,7 @@ export function LessonContent({ lesson, progress, customTopic, onProgressUpdate 
                 value={chatInput}
                 onChange={(e) => setChatInput(e.target.value)}
                 onKeyDown={(e) => e.key === 'Enter' && !e.shiftKey && sendChatMessage()}
-                placeholder="Ask a question about this lesson..."
+                placeholder="Ask a question or paste a problem to solve..."
                 disabled={isSendingChat}
               />
               <Button onClick={sendChatMessage} disabled={isSendingChat || !chatInput.trim()}>
