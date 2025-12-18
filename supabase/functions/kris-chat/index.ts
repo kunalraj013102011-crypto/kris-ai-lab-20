@@ -276,7 +276,9 @@ serve(async (req) => {
       ],
       learning: [
         'create lesson', 'generate tutorial', 'make course', 'structured learning',
-        'lesson about', 'tutorial on', 'teach me with lesson'
+        'lesson about', 'tutorial on', 'teach me with lesson', 'i need to learn',
+        'teach me about', 'explain how to', 'i don\'t understand', 'what is a',
+        'how does', 'help me understand'
       ]
     };
     
@@ -343,6 +345,19 @@ You KEEP the conversation and provide detailed answers yourself. You only redire
    WHEN TO REDIRECT:
    ✅ User explicitly asks for LESSONS or TUTORIALS
    ✅ User wants STRUCTURED educational content
+   ✅ User shows KNOWLEDGE GAPS that would benefit from in-depth learning
+   ✅ User is struggling with FOUNDATIONAL CONCEPTS needed for their project
+   
+   **KNOWLEDGE GAP DETECTION:**
+   When you detect the user lacks fundamental knowledge needed for their project:
+   1. Identify the specific topic they need to learn
+   2. Suggest they visit the Learning Hub with the exact topic
+   3. Use redirect format with "learning" module and include the topic in the prompt
+   
+   Examples of knowledge gaps:
+   - User doesn't understand Ohm's Law when building circuits
+   - User confused about microcontroller basics
+   - User unfamiliar with control systems for a robotics project
    
    ⛔ DO NOT REDIRECT for quick explanations - answer those yourself!
 

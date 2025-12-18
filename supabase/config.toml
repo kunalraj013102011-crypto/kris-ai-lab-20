@@ -42,3 +42,6 @@ verify_jwt = true
 
 [functions.generate-project-documentary]
 verify_jwt = true
+
+[functions.learning-hub-chat]
+verify_jwt = true

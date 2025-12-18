@@ -103,6 +103,74 @@ export type Database = {
         }
         Relationships: []
       }
+      engineering_lessons: {
+        Row: {
+          category: string
+          content: string | null
+          created_at: string
+          description: string | null
+          difficulty: string
+          id: string
+          title: string
+          updated_at: string
+        }
+        Insert: {
+          category: string
+          content?: string | null
+          created_at?: string
+          description?: string | null
+          difficulty?: string
+          id?: string
+          title: string
+          updated_at?: string
+        }
+        Update: {
+          category?: string
+          content?: string | null
+          created_at?: string
+          description?: string | null
+          difficulty?: string
+          id?: string
+          title?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      lesson_chat_history: {
+        Row: {
+          content: string
+          created_at: string
+          id: string
+          lesson_progress_id: string | null
+          role: string
+          user_id: string
+        }
+        Insert: {
+          content: string
+          created_at?: string
+          id?: string
+          lesson_progress_id?: string | null
+          role: string
+          user_id: string
+        }
+        Update: {
+          content?: string
+          created_at?: string
+          id?: string
+          lesson_progress_id?: string | null
+          role?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "lesson_chat_history_lesson_progress_id_fkey"
+            columns: ["lesson_progress_id"]
+            isOneToOne: false
+            referencedRelation: "user_lesson_progress"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       project_phases: {
         Row: {
           completed_at: string | null
@@ -220,6 +288,53 @@ export type Database = {
           user_id?: string
         }
         Relationships: []
+      }
+      user_lesson_progress: {
+        Row: {
+          ai_content: string | null
+          completed_at: string | null
+          created_at: string
+          custom_topic: string | null
+          id: string
+          lesson_id: string | null
+          notes: string | null
+          status: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          ai_content?: string | null
+          completed_at?: string | null
+          created_at?: string
+          custom_topic?: string | null
+          id?: string
+          lesson_id?: string | null
+          notes?: string | null
+          status?: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          ai_content?: string | null
+          completed_at?: string | null
+          created_at?: string
+          custom_topic?: string | null
+          id?: string
+          lesson_id?: string | null
+          notes?: string | null
+          status?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "user_lesson_progress_lesson_id_fkey"
+            columns: ["lesson_id"]
+            isOneToOne: false
+            referencedRelation: "engineering_lessons"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       user_memory: {
         Row: {
