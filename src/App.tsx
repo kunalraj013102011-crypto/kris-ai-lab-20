@@ -17,6 +17,7 @@ import CircuitCanvas from "./pages/CircuitCanvas";
 import ProjectManager from "./pages/ProjectManager";
 import Workspace from "./pages/Workspace";
 import WorkspaceDetail from "./pages/WorkspaceDetail";
+import WorkspaceProjectDashboard from "./pages/WorkspaceProjectDashboard";
 import Settings from "./pages/Settings";
 import About from "./pages/About";
 import Contact from "./pages/Contact";
@@ -92,6 +93,7 @@ const App = () => (
           <Route path="/project-manager" element={<ProtectedRoute><ProjectManager /></ProtectedRoute>} />
           <Route path="/workspace" element={<ProtectedRoute><Workspace /></ProtectedRoute>} />
           <Route path="/workspace/:workspaceId" element={<ProtectedRoute><WorkspaceDetail /></ProtectedRoute>} />
+          <Route path="/workspace/:workspaceId/project/:projectId" element={<ProtectedRoute><WorkspaceProjectDashboard /></ProtectedRoute>} />
           <Route path="/settings" element={<ProtectedRoute><Settings /></ProtectedRoute>} />
           <Route path="*" element={<NotFound />} />
         </Routes>

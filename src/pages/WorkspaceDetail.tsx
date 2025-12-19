@@ -211,24 +211,32 @@ const WorkspaceDetail = () => {
   };
 
   const inviteMember = async () => {
-    if (!workspaceId || !inviteEmail.trim()) return;
+    if (!workspaceId || !userId || !inviteEmail.trim()) return;
 
     setInviting(true);
     try {
-      // In a real app, you would send an invitation email
-      // For now, we'll show a message about the invitation system
+      const { error } = await supabase
+        .from("workspace_invitations")
+        .insert({
+          workspace_id: workspaceId,
+          email: inviteEmail.trim().toLowerCase(),
+          invited_by: userId,
+        });
+
+      if (error) throw error;
+
       toast({
-        title: "Invitation Feature",
-        description: "In production, an invitation email would be sent to " + inviteEmail,
+        title: "Invitation Sent",
+        description: `Invitation sent to ${inviteEmail}`,
       });
 
       setInviteEmail("");
       setInviteDialogOpen(false);
-    } catch (error) {
+    } catch (error: any) {
       console.error("Error inviting member:", error);
       toast({
         title: "Error",
-        description: "Failed to send invitation",
+        description: error.message || "Failed to send invitation",
         variant: "destructive",
       });
     } finally {
@@ -397,11 +405,14 @@ const WorkspaceDetail = () => {
                     {projects.map((project) => (
                       <Card
                         key={project.id}
-                        className="bg-card/50 backdrop-blur-sm border-primary/20 hover:border-primary/40 transition-all cursor-pointer"
+                        className="bg-card/50 backdrop-blur-sm border-primary/20 hover:border-primary/40 transition-all cursor-pointer group"
+                        onClick={() => navigate(`/workspace/${workspaceId}/project/${project.id}`)}
                       >
                         <CardHeader>
                           <div className="flex items-start justify-between">
-                            <CardTitle className="text-lg">{project.title}</CardTitle>
+                            <CardTitle className="text-lg group-hover:text-primary transition-colors">
+                              {project.title}
+                            </CardTitle>
                             <Badge className={getPhaseColor(project.current_phase)}>
                               {project.current_phase}
                             </Badge>
@@ -418,6 +429,9 @@ const WorkspaceDetail = () => {
                             </div>
                             <Badge variant="outline">{project.status}</Badge>
                           </div>
+                          <p className="text-xs text-primary mt-3 opacity-0 group-hover:opacity-100 transition-opacity">
+                            Click to open KRIS Laboratory →
+                          </p>
                         </CardContent>
                       </Card>
                     ))}
