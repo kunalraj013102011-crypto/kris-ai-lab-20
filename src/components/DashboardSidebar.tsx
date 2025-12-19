@@ -63,7 +63,6 @@ const mainModules = [
   { title: "3D Lab", url: "/3d-lab", icon: Box },
   { title: "Circuit Canvas", url: "/circuit-canvas", icon: CircuitBoard },
   { title: "Project Manager", url: "/project-manager", icon: FolderKanban },
-  { title: "Workspace", url: "/workspace", icon: Layers },
 ];
 
 const professionalPages = [
@@ -281,7 +280,34 @@ export function DashboardSidebar() {
         )}
       </SidebarContent>
 
-      <SidebarFooter className="border-t border-primary/20 p-4">
+      <SidebarFooter className="border-t border-primary/20 p-2">
+        {/* Workspace Button */}
+        <SidebarMenu>
+          <SidebarMenuItem>
+            <SidebarMenuButton
+              onClick={() => navigate("/workspace")}
+              isActive={isActive("/workspace")}
+              tooltip="Workspace"
+              className="mb-2"
+            >
+              <Layers className="w-4 h-4" />
+              <span>Workspace</span>
+            </SidebarMenuButton>
+          </SidebarMenuItem>
+          <SidebarMenuItem>
+            <SidebarMenuButton
+              onClick={() => navigate("/settings")}
+              isActive={isActive("/settings")}
+              tooltip="Settings"
+              className="mb-2"
+            >
+              <Settings className="w-4 h-4" />
+              <span>Settings</span>
+            </SidebarMenuButton>
+          </SidebarMenuItem>
+        </SidebarMenu>
+
+        {/* User Profile */}
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
             <Button variant="ghost" className="w-full justify-start gap-2">
