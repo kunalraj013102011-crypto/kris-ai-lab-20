@@ -1,31 +1,11 @@
-name: Sync MAIN to Mirror Repos
-
-permissions:
-  contents: write
-
-on:
-  push:
-    branches:
-      - main
-
-jobs:
-  sync:
-    runs-on: ubuntu-latest
-
-    steps:
-      - name: Checkout MAIN
-        uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
-
       - name: Push to kris-lab
         run: |
           git config --global user.name "kris-sync-bot"
           git config --global user.email "sync@kris.ai"
-          git remote add krislab https://x-access-token:${{ secrets.GITHUB_TOKEN }}@github.com/kunalraj013102011-crypto/kris-lab.git
+          git remote add krislab https://x-access-token:${{ secrets.KRIS_AI}}@github.com/kunalraj013102011-crypto/kris-lab.git
           git push krislab main --force
 
       - name: Push to project-handover-hub
         run: |
-          git remote add handover https://x-access-token:${{ secrets.GITHUB_TOKEN }}@github.com/kunalraj013102011-crypto/project-handover-hub.git
+          git remote add handover https://x-access-token:${{ secrets.MIRROR_PUSH_TOKEN }}@github.com/kunalraj013102011-crypto/project-handover-hub.git
           git push handover main --force
