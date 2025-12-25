@@ -1,5 +1,8 @@
 name: Sync MAIN to Mirror Repos
 
+permissions:
+  contents: write
+
 on:
   push:
     branches:
