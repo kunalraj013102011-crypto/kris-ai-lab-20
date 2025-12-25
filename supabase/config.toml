@@ -1,1 +1,40 @@
 project_id = "dhismgabcdxgvulzcegm"
+
+[functions.kris-chat]
+verify_jwt = false
+
+[functions.ai-scientist-chat]
+verify_jwt = false
+
+[functions.experiment-ai]
+verify_jwt = false
+
+[functions.explain-wiring]
+verify_jwt = false
+
+[functions.generate-3d-description]
+verify_jwt = false
+
+[functions.generate-chat-title]
+verify_jwt = false
+
+[functions.generate-image]
+verify_jwt = false
+
+[functions.generate-lesson]
+verify_jwt = false
+
+[functions.generate-project-documentary]
+verify_jwt = false
+
+[functions.generate-project-lessons]
+verify_jwt = false
+
+[functions.learning-hub-chat]
+verify_jwt = false
+
+[functions.manage-project]
+verify_jwt = false
+
+[functions.simulate-project]
+verify_jwt = false
