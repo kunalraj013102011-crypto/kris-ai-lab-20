@@ -1,6 +1,8 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { 
   Brain, 
   BookOpen, 
@@ -8,11 +10,15 @@ import {
   Box, 
   CircuitBoard, 
   FolderKanban,
+  Lock,
+  ArrowRight,
 } from "lucide-react";
 import krisLogo from "@/assets/kris-logo.jpg";
 import { KrisAIChat } from "@/components/KrisAIChat";
 import { SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar";
 import { DashboardSidebar } from "@/components/DashboardSidebar";
+import { supabase } from "@/integrations/supabase/client";
+import { Session } from "@supabase/supabase-js";
 
 interface Feature {
   id: string;
@@ -70,10 +76,46 @@ const features: Feature[] = [
 const Dashboard = () => {
   const navigate = useNavigate();
   const [showKrisAI, setShowKrisAI] = useState(false);
+  const [showLoginModal, setShowLoginModal] = useState(false);
+  const [session, setSession] = useState<Session | null>(null);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      setSession(session);
+      setLoading(false);
+    });
+
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+      setSession(session);
+    });
+
+    return () => subscription.unsubscribe();
+  }, []);
 
   const handleFeatureClick = (route: string) => {
+    if (!session) {
+      setShowLoginModal(true);
+      return;
+    }
     navigate(route);
   };
+
+  const handleChatClick = () => {
+    if (!session) {
+      setShowLoginModal(true);
+      return;
+    }
+    setShowKrisAI(true);
+  };
+
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-background circuit-bg flex items-center justify-center">
+        <div className="text-primary">Loading...</div>
+      </div>
+    );
+  }
 
   return (
     <SidebarProvider>
@@ -83,19 +125,32 @@ const Dashboard = () => {
         <div className="flex-1 flex flex-col">
           {/* Header */}
           <header className="border-b border-primary/30 bg-card/50 backdrop-blur-sm p-4">
-            <div className="flex items-center gap-4">
-              <SidebarTrigger />
-              <div className="flex items-center gap-3">
-                <img 
-                  src={krisLogo} 
-                  alt="KRIS" 
-                  className="w-10 h-10 rounded-full neon-border"
-                />
-                <div>
-                  <h1 className="text-xl font-semibold text-primary">KRIS LABORATORY</h1>
-                  <p className="text-xs text-muted-foreground">Virtual Innovation Lab</p>
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-4">
+                <SidebarTrigger />
+                <div className="flex items-center gap-3">
+                  <img 
+                    src={krisLogo} 
+                    alt="KRIS" 
+                    className="w-10 h-10 rounded-full neon-border"
+                  />
+                  <div>
+                    <h1 className="text-xl font-semibold text-primary">KRIS LABORATORY</h1>
+                    <p className="text-xs text-muted-foreground">Virtual Innovation Lab</p>
+                  </div>
                 </div>
               </div>
+              
+              {!session && (
+                <Button 
+                  size="sm" 
+                  onClick={() => navigate("/auth")}
+                  className="bg-primary text-primary-foreground hover:bg-primary/90"
+                >
+                  Sign In
+                  <ArrowRight className="w-4 h-4 ml-1" />
+                </Button>
+              )}
             </div>
           </header>
 
@@ -106,7 +161,7 @@ const Dashboard = () => {
               <div className="absolute inset-0 flex items-center justify-center z-10">
                 <div className="text-center">
                   <button 
-                    onClick={() => setShowKrisAI(true)}
+                    onClick={handleChatClick}
                     className="transition-transform hover:scale-105"
                   >
                     <img 
@@ -163,8 +218,54 @@ const Dashboard = () => {
           </footer>
         </div>
 
-        {/* KRIS AI Chat */}
-        <KrisAIChat open={showKrisAI} onOpenChange={setShowKrisAI} />
+        {/* KRIS AI Chat - only shown if logged in */}
+        {session && <KrisAIChat open={showKrisAI} onOpenChange={setShowKrisAI} />}
+
+        {/* Login Modal */}
+        <Dialog open={showLoginModal} onOpenChange={setShowLoginModal}>
+          <DialogContent className="bg-card border-primary/30 max-w-md">
+            <DialogHeader>
+              <div className="flex justify-center mb-4">
+                <img 
+                  src={krisLogo} 
+                  alt="KRIS" 
+                  className="w-16 h-16 rounded-full neon-border"
+                />
+              </div>
+              <DialogTitle className="text-center text-xl text-primary">
+                Sign In Required
+              </DialogTitle>
+              <DialogDescription className="text-center">
+                Please sign in to access KRIS AI Chat and all lab features!
+              </DialogDescription>
+            </DialogHeader>
+            
+            <div className="space-y-3 my-4">
+              <div className="flex items-center gap-3 p-3 rounded-lg bg-muted/50">
+                <Brain className="w-5 h-5 text-primary" />
+                <span className="text-sm">Unlimited AI conversations</span>
+              </div>
+              <div className="flex items-center gap-3 p-3 rounded-lg bg-muted/50">
+                <Cpu className="w-5 h-5 text-primary" />
+                <span className="text-sm">Full simulation & 3D lab access</span>
+              </div>
+              <div className="flex items-center gap-3 p-3 rounded-lg bg-muted/50">
+                <FolderKanban className="w-5 h-5 text-primary" />
+                <span className="text-sm">Save & manage your projects</span>
+              </div>
+            </div>
+
+            <div className="flex flex-col gap-2">
+              <Button 
+                className="w-full bg-primary text-primary-foreground hover:bg-primary/90"
+                onClick={() => navigate("/auth")}
+              >
+                <Lock className="w-4 h-4 mr-2" />
+                Sign In / Sign Up
+              </Button>
+            </div>
+          </DialogContent>
+        </Dialog>
       </div>
     </SidebarProvider>
   );

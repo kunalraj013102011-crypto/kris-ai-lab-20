@@ -16,9 +16,6 @@ const Auth = () => {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
-  const [accessCode, setAccessCode] = useState("");
-  const [isAccessGranted, setIsAccessGranted] = useState(false);
-  const ACCESS_CODE = "KRIS2025";
   const audioRef = useRef<HTMLAudioElement | null>(null);
 
   useEffect(() => {
@@ -32,16 +29,6 @@ const Auth = () => {
 
     return () => subscription.unsubscribe();
   }, [navigate]);
-
-  const handleAccessCode = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (accessCode === ACCESS_CODE) {
-      setIsAccessGranted(true);
-      toast({ title: "Access Granted", description: "Welcome to KRIS Laboratory" });
-    } else {
-      toast({ title: "Access Denied", description: "Invalid access code", variant: "destructive" });
-    }
-  };
 
   const playWelcomeSound = () => {
     try {
@@ -73,7 +60,6 @@ const Auth = () => {
           options: { emailRedirectTo: `${window.location.origin}/dashboard` },
         });
         if (error) {
-          // Handle rate limiting gracefully
           if (error.message.includes('For security purposes')) {
             toast({ 
               title: "Please wait", 
@@ -107,50 +93,28 @@ const Auth = () => {
           </div>
           <CardTitle className="text-2xl text-primary">KRIS LABORATORY</CardTitle>
           <CardDescription>
-            {!isAccessGranted ? "Enter access code to continue" : (isLogin ? "Sign in to access the laboratory" : "Create an account to get started")}
+            {isLogin ? "Sign in to access the laboratory" : "Create an account to get started"}
           </CardDescription>
         </CardHeader>
         <CardContent>
-          {!isAccessGranted ? (
-            <form onSubmit={handleAccessCode} className="space-y-4">
-              <div className="space-y-2">
-                <Label htmlFor="accessCode">Access Code</Label>
-                <Input 
-                  id="accessCode" 
-                  type="password" 
-                  placeholder="Enter access code" 
-                  value={accessCode} 
-                  onChange={(e) => setAccessCode(e.target.value)} 
-                  required 
-                  className="border-primary/30" 
-                />
-              </div>
-              <Button type="submit" className="w-full">
-                Submit Access Code
-              </Button>
-            </form>
-          ) : (
-            <>
-              <form onSubmit={handleAuth} className="space-y-4">
-                <div className="space-y-2">
-                  <Label htmlFor="email">Email</Label>
-                  <Input id="email" type="email" placeholder="your.email@example.com" value={email} onChange={(e) => setEmail(e.target.value)} required disabled={loading} className="border-primary/30" />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="password">Password</Label>
-                  <Input id="password" type="password" placeholder="••••••••" value={password} onChange={(e) => setPassword(e.target.value)} required disabled={loading} className="border-primary/30" minLength={6} />
-                </div>
-                <Button type="submit" className="w-full" disabled={loading}>
-                  {loading ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" />Please wait</> : (isLogin ? "Sign In" : "Sign Up")}
-                </Button>
-              </form>
-              <div className="mt-4 text-center">
-                <button type="button" onClick={() => setIsLogin(!isLogin)} className="text-sm text-primary hover:underline" disabled={loading}>
-                  {isLogin ? "Don't have an account? Sign up" : "Already have an account? Sign in"}
-                </button>
-              </div>
-            </>
-          )}
+          <form onSubmit={handleAuth} className="space-y-4">
+            <div className="space-y-2">
+              <Label htmlFor="email">Email</Label>
+              <Input id="email" type="email" placeholder="your.email@example.com" value={email} onChange={(e) => setEmail(e.target.value)} required disabled={loading} className="border-primary/30" />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="password">Password</Label>
+              <Input id="password" type="password" placeholder="••••••••" value={password} onChange={(e) => setPassword(e.target.value)} required disabled={loading} className="border-primary/30" minLength={6} />
+            </div>
+            <Button type="submit" className="w-full" disabled={loading}>
+              {loading ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" />Please wait</> : (isLogin ? "Sign In" : "Sign Up")}
+            </Button>
+          </form>
+          <div className="mt-4 text-center">
+            <button type="button" onClick={() => setIsLogin(!isLogin)} className="text-sm text-primary hover:underline" disabled={loading}>
+              {isLogin ? "Don't have an account? Sign up" : "Already have an account? Sign in"}
+            </button>
+          </div>
         </CardContent>
       </Card>
     </div>
