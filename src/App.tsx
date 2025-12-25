@@ -7,7 +7,7 @@ import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Session } from "@supabase/supabase-js";
 import Welcome from "./pages/Welcome";
-import TryLab from "./pages/TryLab";
+
 import Auth from "./pages/Auth";
 import Dashboard from "./pages/Dashboard";
 import AIScientist from "./pages/AIScientist";
@@ -73,7 +73,7 @@ const App = () => (
       <BrowserRouter>
         <Routes>
           <Route path="/" element={<Welcome />} />
-          <Route path="/try-lab" element={<TryLab />} />
+          <Route path="/try-lab" element={<Dashboard />} />
           <Route path="/auth" element={<Auth />} />
           <Route path="/about" element={<About />} />
           <Route path="/contact" element={<Contact />} />
